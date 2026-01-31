@@ -1,0 +1,19 @@
+apiVersion: v2
+name: openclaw
+description: A Helm chart for OpenClaw - personal AI assistant
+type: application
+version: 1.0.0
+appVersion: "2026.1.30"
+
+home: https://github.com/openclaw/openclaw
+sources:
+  - https://github.com/serhanekicii/openclaw-helm
+
+maintainers:
+  - name: Serhan Ekici
+    url: https://serhanekici.com
+
+dependencies:
+  - name: app-template
+    version: 4.6.2
+    repository: https://bjw-s-labs.github.io/helm-charts/

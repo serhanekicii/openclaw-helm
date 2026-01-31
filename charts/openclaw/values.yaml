@@ -1,0 +1,260 @@
+# OpenClaw Helm Chart Values
+#
+# IMPORTANT ARCHITECTURE NOTES:
+# - OpenClaw is NOT horizontally scalable
+# - Deploy as a SINGLE INSTANCE only
+# - Do NOT increase replica count
+#
+# NETWORKING NOTES:
+# - trustedProxies does NOT support CIDR notation (exact IP match only)
+# - IPv6 exact addresses may work but are untested
+# - Recommend single-stack IPv4 deployments for simplicity
+
+app-template:
+  defaultPodOptions:
+    securityContext:
+      fsGroup: 1000
+      fsGroupChangePolicy: OnRootMismatch
+
+  controllers:
+    main:
+      # Single replica only - OpenClaw does not support horizontal scaling
+      replicas: 1
+
+      initContainers:
+        # Init container runs as root to chown config file to app user.
+        # This is required because the PVC is initially empty and fsGroup only
+        # affects directory ownership, not files copied into it.
+        init-config:
+          image:
+            repository: busybox
+            tag: "1.37"
+          command:
+            - sh
+            - -c
+            - |
+              cp /config/openclaw.json /home/node/.openclaw/openclaw.json
+              chown 1000:1000 /home/node/.openclaw/openclaw.json
+          securityContext:
+            runAsUser: 0
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+              add:
+                - CHOWN
+
+      containers:
+        main:
+          image:
+            repository: ghcr.io/openclaw/openclaw
+            tag: "2026.1.30"
+            pullPolicy: IfNotPresent
+          command:
+            - node
+            - dist/index.js
+          args:
+            - gateway
+            - --bind
+            - lan
+            - --port
+            - "18789"
+          # Reference a secret containing environment variables (e.g., API keys)
+          # Create this secret manually or via external-secrets/vault-operator
+          envFrom: []
+          # Example:
+          # - secretRef:
+          #     name: openclaw-env-secret
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: 2000m
+              memory: 2Gi
+          probes:
+            liveness:
+              enabled: true
+              type: TCP
+              spec:
+                tcpSocket:
+                  port: 18789
+                initialDelaySeconds: 30
+                periodSeconds: 30
+                timeoutSeconds: 5
+                failureThreshold: 3
+            readiness:
+              enabled: true
+              type: TCP
+              spec:
+                tcpSocket:
+                  port: 18789
+                initialDelaySeconds: 10
+                periodSeconds: 10
+                timeoutSeconds: 5
+                failureThreshold: 3
+            startup:
+              enabled: true
+              type: TCP
+              spec:
+                tcpSocket:
+                  port: 18789
+                initialDelaySeconds: 5
+                periodSeconds: 5
+                timeoutSeconds: 5
+                failureThreshold: 30
+
+  configMaps:
+    config:
+      enabled: true
+      data:
+        # OpenClaw configuration - JSON5 format
+        # Sensitive values use ${ENV_VAR} substitution from environment secret
+        openclaw.json: |
+          {
+            // Gateway configuration
+            "gateway": {
+              "port": 18789,
+              "mode": "local",
+              // IMPORTANT: trustedProxies uses exact IP matching only
+              // CIDR notation is NOT supported - list each proxy IP individually
+              "trustedProxies": ["10.0.0.1"]
+            },
+
+            // Agent configuration
+            "agents": {
+              "defaults": {
+                "workspace": "/home/node/.openclaw/workspace",
+                "model": {
+                  // Uses OPENAI_API_KEY from environment
+                  "primary": "openai/gpt-4o"
+                },
+                "userTimezone": "UTC",
+                "timeoutSeconds": 600,
+                "maxConcurrent": 1
+              },
+              "list": [
+                {
+                  "id": "main",
+                  "default": true,
+                  "identity": {
+                    "name": "OpenClaw",
+                    "emoji": "🦞"
+                  }
+                }
+              ]
+            },
+
+            // Session management
+            "session": {
+              "scope": "per-sender",
+              "store": "/home/node/.openclaw/sessions",
+              "reset": {
+                "mode": "idle",
+                "idleMinutes": 60
+              }
+            },
+
+            // Logging
+            "logging": {
+              "level": "info",
+              "consoleLevel": "info",
+              "consoleStyle": "compact",
+              "redactSensitive": "tools"
+            },
+
+            // Tools configuration
+            "tools": {
+              "profile": "full",
+              "web": {
+                "search": {
+                  "enabled": false
+                },
+                "fetch": {
+                  "enabled": true
+                }
+              }
+            }
+
+            // Channel configuration can be added here:
+            // "channels": {
+            //   "telegram": {
+            //     "botToken": "${TELEGRAM_BOT_TOKEN}",
+            //     "enabled": true
+            //   },
+            //   "discord": {
+            //     "token": "${DISCORD_BOT_TOKEN}"
+            //   },
+            //   "slack": {
+            //     "botToken": "${SLACK_BOT_TOKEN}",
+            //     "appToken": "${SLACK_APP_TOKEN}"
+            //   }
+            // }
+          }
+
+  service:
+    main:
+      controller: main
+      # IPv4-only - required due to trustedProxies limitation
+      ipFamilyPolicy: SingleStack
+      ipFamilies:
+        - IPv4
+      ports:
+        http:
+          port: 18789
+
+  ingress:
+    main:
+      enabled: false
+      # Uncomment and configure for your environment
+      # className: nginx
+      # annotations:
+      #   cert-manager.io/cluster-issuer: "your-issuer"
+      #   nginx.ingress.kubernetes.io/ssl-redirect: "true"
+      #   nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+      #   nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+      # tls:
+      #   - secretName: openclaw-tls
+      #     hosts:
+      #       - openclaw.example.com
+      # hosts:
+      #   - host: openclaw.example.com
+      #     paths:
+      #       - path: /
+      #         pathType: Prefix
+      #         service:
+      #           identifier: main
+      #           port: http
+
+  persistence:
+    # ConfigMap for init container to copy from
+    config:
+      enabled: true
+      type: configMap
+      name: openclaw
+      advancedMounts:
+        main:
+          init-config:
+            - path: /config
+              readOnly: true
+
+    # Entire .openclaw directory as PVC
+    data:
+      enabled: true
+      type: persistentVolumeClaim
+      accessMode: ReadWriteOnce
+      size: 5Gi
+      advancedMounts:
+        main:
+          init-config:
+            - path: /home/node/.openclaw
+          main:
+            - path: /home/node/.openclaw

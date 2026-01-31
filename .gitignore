@@ -1,0 +1,12 @@
+# Helm chart dependencies (downloaded via helm dependency update)
+charts/*/charts/
+charts/*/Chart.lock
+*.tgz
+
+# Editor
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

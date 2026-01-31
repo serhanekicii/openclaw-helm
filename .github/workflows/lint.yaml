@@ -1,0 +1,73 @@
+name: Lint and Validate Charts
+
+on:
+  pull_request:
+    paths:
+      - "charts/**"
+      - ".github/workflows/lint.yaml"
+  push:
+    branches:
+      - main
+    paths:
+      - "charts/**"
+      - ".github/workflows/lint.yaml"
+
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.17.2
+
+      - name: Add dependency chart repos
+        run: |
+          helm repo add bjw-s-labs https://bjw-s-labs.github.io/helm-charts/
+
+      - name: Set up chart-testing
+        uses: helm/chart-testing-action@v2.8.0
+
+      - name: Run chart-testing (list-changed)
+        id: list-changed
+        run: |
+          changed=$(ct list-changed --target-branch ${{ github.event.repository.default_branch }})
+          if [[ -n "$changed" ]]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run chart-testing (lint)
+        if: steps.list-changed.outputs.changed == 'true'
+        run: ct lint --target-branch ${{ github.event.repository.default_branch }}
+
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.17.2
+
+      - name: Add dependency chart repos
+        run: |
+          helm repo add bjw-s-labs https://bjw-s-labs.github.io/helm-charts/
+
+      - name: Update dependencies
+        run: |
+          helm dependency update charts/openclaw
+
+      - name: Helm lint
+        run: |
+          helm lint charts/openclaw
+
+      - name: Helm template validation
+        run: |
+          helm template test charts/openclaw --debug > /dev/null
