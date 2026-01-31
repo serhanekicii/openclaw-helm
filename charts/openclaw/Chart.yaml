@@ -4,6 +4,10 @@ description: A Helm chart for OpenClaw - personal AI assistant
 type: application
 version: 1.0.0
 appVersion: "2026.1.30"
+keywords:
+  - ai
+  - assistant
+  - chatbot
 
 home: https://github.com/openclaw/openclaw
 sources:
