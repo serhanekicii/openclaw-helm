@@ -3,6 +3,30 @@ entries:
   openclaw:
   - apiVersion: v2
     appVersion: 2026.1.30
+    created: "2026-02-01T13:43:46.591516989Z"
+    dependencies:
+    - name: app-template
+      repository: https://bjw-s-labs.github.io/helm-charts/
+      version: 4.6.2
+    description: A Helm chart for OpenClaw - personal AI assistant
+    digest: 19a4405903ef5aaeab7657c3fbc1e8f20fbc74a75a4c4b8456eb233322a39b0b
+    home: https://github.com/openclaw/openclaw
+    keywords:
+    - ai
+    - assistant
+    - chatbot
+    maintainers:
+    - name: Serhan Ekici
+      url: https://serhanekici.com
+    name: openclaw
+    sources:
+    - https://github.com/serhanekicii/openclaw-helm
+    type: application
+    urls:
+    - https://github.com/serhanekicii/openclaw-helm/releases/download/openclaw-1.2.0/openclaw-1.2.0.tgz
+    version: 1.2.0
+  - apiVersion: v2
+    appVersion: 2026.1.30
     created: "2026-01-31T21:38:16.408023302Z"
     dependencies:
     - name: app-template
@@ -25,4 +49,4 @@ entries:
     urls:
     - https://github.com/serhanekicii/openclaw-helm/releases/download/openclaw-1.0.0/openclaw-1.0.0.tgz
     version: 1.0.0
-generated: "2026-01-31T21:38:16.408032389Z"
+generated: "2026-02-01T13:43:46.591532698Z"
