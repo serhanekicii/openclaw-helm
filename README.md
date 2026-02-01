@@ -2,9 +2,11 @@
 
 Helm chart for deploying [OpenClaw](https://github.com/openclaw/openclaw), a personal AI assistant.
 
+This chart uses [bjw-s app-template](https://github.com/bjw-s-labs/helm-charts/tree/main/charts/other/app-template) as a base, providing a flexible and well-maintained foundation for Kubernetes deployments. For OpenClaw configuration options, see the [OpenClaw documentation](https://docs.openclaw.ai/). OpenClaw is designed for single-instance deployments only—do **not** deploy multiple replicas.
+
 For a detailed walkthrough, see the [blog post](https://serhanekici.com/openclaw-helm.html).
 
-## Usage
+## Quick Start
 
 Add the Helm repository:
 
@@ -19,13 +21,80 @@ Install the chart:
 helm install openclaw openclaw/openclaw -f values.yaml
 ```
 
-## Chart Information
+## Browser Automation
 
-This chart uses [bjw-s app-template](https://github.com/bjw-s-labs/helm-charts/tree/main/charts/other/app-template) as a base, providing a flexible and well-maintained foundation for Kubernetes deployments.
+The chart includes a headless Chromium sidecar for browser automation tasks. The agent connects via Chrome DevTools Protocol (CDP):
 
-The OpenClaw application config is defined in `app-template.configMaps.config.data` as JSON5. For configuration options, see the [OpenClaw documentation](https://docs.openclaw.ai/).
+```yaml
+app-template:
+  configMaps:
+    config:
+      data:
+        openclaw.json: |
+          {
+            "browser": {
+              "enabled": true,
+              "defaultProfile": "openclaw",
+              "profiles": {
+                "openclaw": {
+                  "cdpUrl": "http://localhost:9222"
+                }
+              }
+            }
+          }
+```
 
-### Environment Secrets
+The Chromium container runs in the same pod, accessible on port 9222.
+
+## Skills and Runtime Dependencies
+
+OpenClaw supports skills from [ClawHub](https://clawhub.ai). The `init-skills` container provides a way to declaratively add skills and their runtime dependencies.
+
+Example: Installing a Python-based skill with `uv`:
+
+```yaml
+app-template:
+  controllers:
+    main:
+      initContainers:
+        init-skills:
+          command:
+            - sh
+            - -c
+            - |
+              # Install uv for Python-based skills
+              mkdir -p /home/node/.openclaw/bin
+              curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/home/node/.openclaw/bin sh
+
+              # Install skills from ClawHub
+              cd /home/node/.openclaw/workspace
+              mkdir -p skills
+              npx -y clawhub install miniflux --no-input
+      containers:
+        main:
+          env:
+            PATH: /home/node/.openclaw/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+```
+
+Configure skills in `openclaw.json` inside values.yaml:
+
+```json
+"skills": {
+  "entries": {
+    "miniflux": {
+      "enabled": true,
+      "env": {
+        "MINIFLUX_URL": "${MINIFLUX_URL}",
+        "MINIFLUX_API_KEY": "${MINIFLUX_API_KEY}"
+      }
+    }
+  }
+}
+```
+
+Browse available skills at https://www.clawhub.com/.
+
+## Environment Secrets
 
 API keys and sensitive values should be passed via a Kubernetes secret:
 
@@ -40,12 +109,17 @@ app-template:
                 name: openclaw-env-secret
 ```
 
-## Architecture Constraints
+Reference secrets in `openclaw.json` using `${ENV_VAR}` substitution:
 
-OpenClaw is designed for single-instance deployments only and cannot scale horizontally.
-
-- Do **not** deploy multiple replicas
-- The chart enforces `replicas: 1` by default
+```json
+{
+  "channels": {
+    "telegram": {
+      "botToken": "${TELEGRAM_BOT_TOKEN}"
+    }
+  }
+}
+```
 
 ## Skills Management
 
