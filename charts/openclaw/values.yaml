@@ -44,6 +44,50 @@ app-template:
               add:
                 - CHOWN
 
+        # Install ClawHub skills and runtime dependencies (idempotent)
+        # Skills are installed from https://clawhub.com
+        init-skills:
+          image:
+            repository: node
+            tag: "22"
+          command:
+            - sh
+            - -c
+            - |
+              # ============================================================
+              # Runtime Dependencies
+              # ============================================================
+              # Some skills require additional runtimes (Python, Go, etc.)
+              # Install them here so they persist across pod restarts.
+              #
+              # Example: Install uv (Python package manager) for Python skills
+              # mkdir -p /home/node/.openclaw/bin
+              # if [ ! -f /home/node/.openclaw/bin/uv ]; then
+              #   curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/home/node/.openclaw/bin sh
+              # fi
+
+              # ============================================================
+              # Skill Installation
+              # ============================================================
+              # Install skills from ClawHub (https://clawhub.com)
+              # Add skill slugs to the list below to install them declaratively.
+              cd /home/node/.openclaw/workspace
+              mkdir -p skills
+              for skill in hacker-news; do
+                if [ -n "$skill" ] && [ ! -d "skills/${skill##*/}" ]; then
+                  echo "Installing skill: $skill"
+                  npx -y clawhub install "$skill" --no-input || true
+                fi
+              done
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+
       containers:
         main:
           image:
@@ -65,6 +109,12 @@ app-template:
           # Example:
           # - secretRef:
           #     name: openclaw-env-secret
+          env: {}
+          # Example: Add runtime dependency paths for skills
+          # env:
+          #   PATH: /home/node/.openclaw/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+          #   # For internal CA trust (Python requests library)
+          #   REQUESTS_CA_BUNDLE: /etc/ssl/certs/ca-bundle.crt
           securityContext:
             runAsUser: 1000
             runAsGroup: 1000
@@ -256,5 +306,20 @@ app-template:
         main:
           init-config:
             - path: /home/node/.openclaw
+          init-skills:
+            - path: /home/node/.openclaw
           main:
             - path: /home/node/.openclaw
+
+    # CA bundle for internal TLS (optional)
+    # Use with trust-manager or similar to trust internal CAs
+    # ca-bundle:
+    #   enabled: true
+    #   type: configMap
+    #   name: ca-bundle
+    #   advancedMounts:
+    #     main:
+    #       main:
+    #         - path: /etc/ssl/certs/ca-bundle.crt
+    #           subPath: ca-bundle.crt
+    #           readOnly: true
