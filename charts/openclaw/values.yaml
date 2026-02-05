@@ -91,6 +91,8 @@ app-template:
                 - ALL
               add:
                 - CHOWN
+                - DAC_OVERRIDE
+                - FOWNER
 
         # Install ClawHub skills and runtime dependencies (idempotent)
         # Skills are installed from https://clawhub.com

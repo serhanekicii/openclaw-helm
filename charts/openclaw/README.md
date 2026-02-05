@@ -151,6 +151,33 @@ configMode: overwrite  # or "merge" (default)
 ```
 
 <details>
+<summary><b>ArgoCD with Config Merge</b></summary>
+
+When using `configMode: merge` with ArgoCD, prevent ArgoCD from overwriting runtime config changes by ignoring the ConfigMap:
+
+```yaml
+# Application manifest
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: openclaw
+spec:
+  ignoreDifferences:
+    - group: ""
+      kind: ConfigMap
+      name: openclaw
+      jsonPointers:
+        - /data
+```
+
+This allows:
+- ArgoCD manages deployments, services, etc.
+- Runtime config changes (paired devices, UI settings) persist on PVC
+- Helm values still merge on pod restart
+
+</details>
+
+<details>
 <summary><b>Values Table</b></summary>
 
 ## Values
@@ -176,6 +203,8 @@ configMode: overwrite  # or "merge" (default)
 | app-template.controllers.main.initContainers.init-config.image.tag | string | `"2026.1.30"` |  |
 | app-template.controllers.main.initContainers.init-config.securityContext.allowPrivilegeEscalation | bool | `false` |  |
 | app-template.controllers.main.initContainers.init-config.securityContext.capabilities.add[0] | string | `"CHOWN"` |  |
+| app-template.controllers.main.initContainers.init-config.securityContext.capabilities.add[1] | string | `"DAC_OVERRIDE"` |  |
+| app-template.controllers.main.initContainers.init-config.securityContext.capabilities.add[2] | string | `"FOWNER"` |  |
 | app-template.controllers.main.initContainers.init-config.securityContext.capabilities.drop[0] | string | `"ALL"` |  |
 | app-template.controllers.main.initContainers.init-config.securityContext.runAsUser | int | `0` |  |
 | app-template.controllers.main.initContainers.init-skills.command[0] | string | `"sh"` |  |
