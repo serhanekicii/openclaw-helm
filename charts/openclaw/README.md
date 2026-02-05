@@ -3,7 +3,7 @@
 [![Helm 3](https://img.shields.io/badge/Helm-3.0+-0f1689?logo=helm&logoColor=white)](https://helm.sh/)
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-1.26+-326ce5?logo=kubernetes&logoColor=white)](https://kubernetes.io/)
 [![App Version](https://img.shields.io/badge/App_Version-2026.1.30-blue)](https://github.com/openclaw/openclaw)
-[![Chart Version](https://img.shields.io/badge/Chart_Version-1.3.1-blue)](https://github.com/serhanekicii/openclaw-helm)
+[![Chart Version](https://img.shields.io/badge/Chart_Version-1.3.2-blue)](https://github.com/serhanekicii/openclaw-helm)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 Helm chart for deploying OpenClaw on Kubernetes — an AI assistant that connects to messaging platforms and executes tasks autonomously.
@@ -137,46 +137,6 @@ kubectl delete pvc -n openclaw -l app.kubernetes.io/name=openclaw  # optional: r
 
 All values are nested under `app-template:`. See [values.yaml](values.yaml) for full reference.
 
-### Config Mode
-
-The `configMode` setting controls how Helm-managed config merges with runtime changes:
-
-| Mode | Behavior |
-|------|----------|
-| `merge` (default) | Helm values are deep-merged with existing config. Runtime changes (e.g., paired devices, UI settings) are preserved. |
-| `overwrite` | Helm values completely replace existing config. Use for strict GitOps where config should match values.yaml exactly. |
-
-```yaml
-configMode: overwrite  # or "merge" (default)
-```
-
-<details>
-<summary><b>ArgoCD with Config Merge</b></summary>
-
-When using `configMode: merge` with ArgoCD, prevent ArgoCD from overwriting runtime config changes by ignoring the ConfigMap:
-
-```yaml
-# Application manifest
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: openclaw
-spec:
-  ignoreDifferences:
-    - group: ""
-      kind: ConfigMap
-      name: openclaw
-      jsonPointers:
-        - /data
-```
-
-This allows:
-- ArgoCD manages deployments, services, etc.
-- Runtime config changes (paired devices, UI settings) persist on PVC
-- Helm values still merge on pod restart
-
-</details>
-
 <details>
 <summary><b>Values Table</b></summary>
 
@@ -255,6 +215,46 @@ This allows:
 | app-template.service.main.ipFamilyPolicy | string | `"SingleStack"` |  |
 | app-template.service.main.ports.http.port | int | `18789` |  |
 | configMode | string | `"merge"` | Config mode: `merge` preserves runtime changes, `overwrite` for strict GitOps |
+
+</details>
+
+### Config Mode
+
+The `configMode` setting controls how Helm-managed config merges with runtime changes:
+
+| Mode | Behavior |
+|------|----------|
+| `merge` (default) | Helm values are deep-merged with existing config. Runtime changes (e.g., paired devices, UI settings) are preserved. |
+| `overwrite` | Helm values completely replace existing config. Use for strict GitOps where config should match values.yaml exactly. |
+
+```yaml
+configMode: overwrite  # or "merge" (default)
+```
+
+<details>
+<summary><b>ArgoCD with Config Merge</b></summary>
+
+When using `configMode: merge` with ArgoCD, prevent ArgoCD from overwriting runtime config changes by ignoring the ConfigMap:
+
+```yaml
+# Application manifest
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: openclaw
+spec:
+  ignoreDifferences:
+    - group: ""
+      kind: ConfigMap
+      name: openclaw
+      jsonPointers:
+        - /data
+```
+
+This allows:
+- ArgoCD manages deployments, services, etc.
+- Runtime config changes (paired devices, UI settings) persist on PVC
+- Helm values still merge on pod restart
 
 </details>
 
