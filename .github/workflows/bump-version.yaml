@@ -102,13 +102,6 @@ jobs:
         run: |
           sed -i "s/tag: \"[0-9.]*\"/tag: \"${{ steps.get-version.outputs.version }}\"/" charts/openclaw/values.yaml
 
-      - name: Regenerate docs
-        if: steps.check.outputs.skip != 'true'
-        run: |
-          mkdir -p /tmp/helm-docs
-          curl -sSL https://github.com/norwoodj/helm-docs/releases/download/v1.14.2/helm-docs_1.14.2_Linux_x86_64.tar.gz | tar xz -C /tmp/helm-docs
-          /tmp/helm-docs/helm-docs --chart-search-root=charts
-
       - name: Show changes
         if: steps.check.outputs.skip != 'true'
         run: |
@@ -119,6 +112,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add charts/openclaw/Chart.yaml charts/openclaw/values.yaml charts/openclaw/README.md
+          git add charts/openclaw/Chart.yaml charts/openclaw/values.yaml
           git commit -m "chore: bump openclaw to ${{ steps.get-version.outputs.version }}"
           git push
+          # docs workflow will auto-trigger and regenerate README
