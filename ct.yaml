@@ -4,3 +4,4 @@ chart-dirs:
 chart-repos:
   - bjw-s=https://bjw-s-labs.github.io/helm-charts/
 helm-extra-args: --timeout 600s
+check-version-increment: false
