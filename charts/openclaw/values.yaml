@@ -5,11 +5,6 @@
 # - Deploy as a SINGLE INSTANCE only
 # - Do NOT increase replica count
 #
-# NETWORKING NOTES:
-# - trustedProxies does NOT support CIDR notation (exact IP match only)
-# - IPv6 exact addresses may work but are untested
-# - Recommend single-stack IPv4 deployments for simplicity
-
 # -- Config mode: `merge` preserves runtime changes, `overwrite` for strict GitOps
 configMode: merge
 
@@ -19,19 +14,6 @@ app-template:
     securityContext:
       fsGroup: 1000
       fsGroupChangePolicy: OnRootMismatch
-    # ========================================================================
-    # Live Config Reload (Reloader)
-    # ========================================================================
-    # Automatically restart pods when ConfigMap or Secret changes.
-    # Requires Stakater Reloader: https://github.com/stakater/Reloader
-    #
-    # Uncomment to enable:
-    # annotations:
-    #   reloader.stakater.com/auto: "true"
-    #
-    # Or for specific resources only:
-    #   configmap.reloader.stakater.com/reload: "openclaw"
-    #   secret.reloader.stakater.com/reload: "openclaw-env-secret"
 
   controllers:
     main:
@@ -52,11 +34,14 @@ app-template:
             - sh
             - -c
             - |
+              log() { echo "[$(date -Iseconds)] [init-config] $*"; }
+
+              log "Starting config initialization"
               mkdir -p /home/node/.openclaw
               CONFIG_MODE="${CONFIG_MODE:-merge}"
 
               if [ "$CONFIG_MODE" = "merge" ] && [ -f /home/node/.openclaw/openclaw.json ]; then
-                echo "Merging Helm config with existing config..."
+                log "Mode: merge - merging Helm config with existing config"
                 node -e "
                   const fs = require('fs');
                   const existing = JSON.parse(fs.readFileSync('/home/node/.openclaw/openclaw.json', 'utf8'));
@@ -75,11 +60,13 @@ app-template:
                   const merged = deepMerge(existing, helm);
                   fs.writeFileSync('/home/node/.openclaw/openclaw.json', JSON.stringify(merged, null, 2));
                 "
+                log "Config merged successfully"
               else
-                echo "Copying Helm config (overwrite mode or fresh install)..."
+                log "Mode: overwrite - copying Helm config (fresh install or overwrite mode)"
                 cp /config/openclaw.json /home/node/.openclaw/openclaw.json
               fi
               chown -R 1000:1000 /home/node/.openclaw
+              log "Config initialization complete"
           env:
             - name: CONFIG_MODE
               value: "merge"
@@ -104,6 +91,10 @@ app-template:
             - sh
             - -c
             - |
+              log() { echo "[$(date -Iseconds)] [init-skills] $*"; }
+
+              log "Starting skills initialization"
+
               # ============================================================
               # Runtime Dependencies
               # ============================================================
@@ -113,6 +104,7 @@ app-template:
               # Example: Install uv (Python package manager) for Python skills
               # mkdir -p /home/node/.openclaw/bin
               # if [ ! -f /home/node/.openclaw/bin/uv ]; then
+              #   log "Installing uv..."
               #   curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/home/node/.openclaw/bin sh
               # fi
 
@@ -125,10 +117,13 @@ app-template:
               mkdir -p skills
               for skill in weather; do
                 if [ -n "$skill" ] && [ ! -d "skills/${skill##*/}" ]; then
-                  echo "Installing skill: $skill"
+                  log "Installing skill: $skill"
                   npx -y clawhub install "$skill" --no-input || true
+                else
+                  log "Skill already installed: $skill"
                 fi
               done
+              log "Skills initialization complete"
           securityContext:
             runAsUser: 1000
             runAsGroup: 1000
@@ -271,7 +266,9 @@ app-template:
               "port": 18789,
               "mode": "local",
               // IMPORTANT: trustedProxies uses exact IP matching only
-              // CIDR notation is NOT supported - list each proxy IP individually
+              // - CIDR notation is NOT supported - list each proxy IP individually
+              // - IPv6 exact addresses may work but are untested
+              // - Recommend single-stack IPv4 deployments for simplicity
               "trustedProxies": ["10.0.0.1"]
             },
 
@@ -361,7 +358,7 @@ app-template:
   service:
     main:
       controller: main
-      # IPv4-only - required due to trustedProxies limitation
+      # IPv4-only (see trustedProxies note in gateway config)
       ipFamilyPolicy: SingleStack
       ipFamilies:
         - IPv4
