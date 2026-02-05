@@ -12,6 +12,10 @@ on:
       - "charts/**"
       - ".github/workflows/docs.yaml"
 
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   helm-docs:
     runs-on: ubuntu-24.04

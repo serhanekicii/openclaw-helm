@@ -18,6 +18,11 @@ on:
           - minor
           - major
         default: patch
+      dry_run:
+        description: "Dry run (show changes without committing)"
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   bump:
@@ -100,7 +105,10 @@ jobs:
       - name: Update values.yaml
         if: steps.check.outputs.skip != 'true'
         run: |
-          sed -i "s/tag: \"[0-9.]*\"/tag: \"${{ steps.get-version.outputs.version }}\"/" charts/openclaw/values.yaml
+          version="${{ steps.get-version.outputs.version }}"
+          # Only update tags for ghcr.io/openclaw/openclaw images (init-config and main)
+          # This preserves other image tags (node:22 for init-skills, chromium:124)
+          sed -i "/repository: ghcr.io\/openclaw\/openclaw/{n;s/tag: \"[^\"]*\"/tag: \"$version\"/}" charts/openclaw/values.yaml
 
       - name: Show changes
         if: steps.check.outputs.skip != 'true'
@@ -108,7 +116,7 @@ jobs:
           git diff
 
       - name: Commit and push
-        if: steps.check.outputs.skip != 'true'
+        if: steps.check.outputs.skip != 'true' && inputs.dry_run != true
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -116,3 +124,10 @@ jobs:
           git commit -m "chore: bump openclaw to ${{ steps.get-version.outputs.version }}"
           git push
           # docs workflow will auto-trigger and regenerate README
+
+      - name: Dry run summary
+        if: steps.check.outputs.skip != 'true' && inputs.dry_run == true
+        run: |
+          echo "::notice::Dry run - no changes committed"
+          echo "Would bump OpenClaw to ${{ steps.get-version.outputs.version }}"
+          echo "Would bump chart version to ${{ steps.new-version.outputs.new_version }}"
