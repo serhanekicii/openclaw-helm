@@ -96,19 +96,26 @@ jobs:
           echo "new_version=$new_version" >> "$GITHUB_OUTPUT"
           echo "New chart version: $new_version"
 
+      - name: Install yq
+        if: steps.check.outputs.skip != 'true'
+        uses: mikefarah/yq@v4
+
       - name: Update Chart.yaml
         if: steps.check.outputs.skip != 'true'
         run: |
-          sed -i "s/^version:.*/version: ${{ steps.new-version.outputs.new_version }}/" charts/openclaw/Chart.yaml
-          sed -i "s/^appVersion:.*/appVersion: \"${{ steps.get-version.outputs.version }}\"/" charts/openclaw/Chart.yaml
+          yq -i '.version = "${{ steps.new-version.outputs.new_version }}"' charts/openclaw/Chart.yaml
+          yq -i '.appVersion = "${{ steps.get-version.outputs.version }}"' charts/openclaw/Chart.yaml
 
       - name: Update values.yaml
         if: steps.check.outputs.skip != 'true'
         run: |
           version="${{ steps.get-version.outputs.version }}"
-          # Only update tags for ghcr.io/openclaw/openclaw images (init-config and main)
-          # This preserves other image tags (node:22 for init-skills, chromium:124)
-          sed -i "/repository: ghcr.io\/openclaw\/openclaw/{n;s/tag: \"[^\"]*\"/tag: \"$version\"/}" charts/openclaw/values.yaml
+          # Update only ghcr.io/openclaw/openclaw image tags (init-config and main containers)
+          # Preserves other image tags (node:22 for init-skills, chromium:124)
+          yq -i '
+            .app-template.controllers.main.initContainers.init-config.image.tag = "'"$version"'" |
+            .app-template.controllers.main.containers.main.image.tag = "'"$version"'"
+          ' charts/openclaw/values.yaml
 
       - name: Show changes
         if: steps.check.outputs.skip != 'true'
