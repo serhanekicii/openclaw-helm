@@ -15,9 +15,14 @@ on:
 jobs:
   helm-docs:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          ref: ${{ github.head_ref || github.ref }}
+          fetch-depth: 0
 
       - name: Install helm-docs
         run: |
@@ -29,9 +34,12 @@ jobs:
         run: |
           helm-docs --chart-search-root=charts
 
-      - name: Check for changes
+      - name: Commit changes
         run: |
-          if ! git diff --exit-code; then
-            echo "::error::Documentation is out of date. Run 'helm-docs --chart-search-root=charts' locally and commit the changes."
-            exit 1
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add charts/openclaw/README.md
+          if ! git diff --staged --quiet; then
+            git commit -m "docs: regenerate README"
+            git push
           fi
