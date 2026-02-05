@@ -1,0 +1,49 @@
+name: Generate Docs
+
+on:
+  pull_request:
+    paths:
+      - "charts/**"
+      - ".github/workflows/docs.yaml"
+  push:
+    branches:
+      - main
+    paths:
+      - "charts/**"
+      - ".github/workflows/docs.yaml"
+
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  helm-docs:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.head_ref || github.ref }}
+          fetch-depth: 0
+
+      - name: Install helm-docs
+        run: |
+          mkdir -p /tmp/helm-docs
+          curl -sSL https://github.com/norwoodj/helm-docs/releases/download/v1.14.2/helm-docs_1.14.2_Linux_x86_64.tar.gz | tar xz -C /tmp/helm-docs
+          sudo mv /tmp/helm-docs/helm-docs /usr/local/bin/
+
+      - name: Run helm-docs
+        run: |
+          helm-docs --chart-search-root=charts
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add charts/openclaw/README.md
+          if ! git diff --staged --quiet; then
+            git commit -m "docs: regenerate README"
+            git push
+          fi

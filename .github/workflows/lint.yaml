@@ -4,12 +4,14 @@ on:
   pull_request:
     paths:
       - "charts/**"
+      - "ct.yaml"
       - ".github/workflows/lint.yaml"
   push:
     branches:
       - main
     paths:
       - "charts/**"
+      - "ct.yaml"
       - ".github/workflows/lint.yaml"
 
 jobs:
@@ -43,7 +45,7 @@ jobs:
 
       - name: Run chart-testing (lint)
         if: steps.list-changed.outputs.changed == 'true'
-        run: ct lint --target-branch ${{ github.event.repository.default_branch }}
+        run: ct lint --config ct.yaml
 
   validate:
     runs-on: ubuntu-24.04

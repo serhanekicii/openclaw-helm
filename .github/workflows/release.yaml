@@ -36,6 +36,44 @@ jobs:
         run: |
           helm repo add bjw-s-labs https://bjw-s-labs.github.io/helm-charts/
 
+      - name: Install yq
+        uses: mikefarah/yq@v4
+
+      - name: Install helm-docs
+        run: |
+          mkdir -p /tmp/helm-docs
+          curl -sSL https://github.com/norwoodj/helm-docs/releases/download/v1.14.2/helm-docs_1.14.2_Linux_x86_64.tar.gz | tar xz -C /tmp/helm-docs
+          sudo mv /tmp/helm-docs/helm-docs /usr/local/bin/
+
+      - name: Auto-bump chart version if needed
+        id: bump
+        run: |
+          current_version=$(yq '.version' charts/openclaw/Chart.yaml)
+          tag="openclaw-${current_version}"
+
+          if git tag | grep -q "^${tag}$"; then
+            echo "Tag ${tag} already exists, bumping patch version..."
+            yq -i '.version |= (split(".") | .[2] = ((.[2] | tonumber) + 1 | tostring) | join("."))' charts/openclaw/Chart.yaml
+            new_version=$(yq '.version' charts/openclaw/Chart.yaml)
+            echo "Bumped version: ${current_version} → ${new_version}"
+            echo "bumped=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Tag ${tag} does not exist, checking if docs need regeneration..."
+            echo "bumped=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Regenerate docs
+        run: |
+          helm-docs --chart-search-root=charts
+
+      - name: Commit changes
+        run: |
+          git add charts/openclaw/Chart.yaml charts/openclaw/README.md
+          if ! git diff --staged --quiet; then
+            git commit -m "chore: update chart version and docs"
+            git push
+          fi
+
       - name: Run chart-releaser
         id: cr
         uses: helm/chart-releaser-action@v1.7.0

@@ -1,0 +1,140 @@
+name: Bump OpenClaw Version
+
+on:
+  schedule:
+    - cron: "0 6 * * *"  # Daily at 6 AM UTC
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "OpenClaw version (e.g., 2026.1.30). Leave empty to fetch latest."
+        required: false
+        type: string
+      chart_bump:
+        description: "Chart version bump type"
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: patch
+      dry_run:
+        description: "Dry run (show changes without committing)"
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  bump:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Get latest OpenClaw version
+        id: get-version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            version="${{ inputs.version }}"
+          else
+            version=$(gh api repos/openclaw/openclaw/releases/latest --jq '.tag_name' | sed 's/^v//')
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "OpenClaw version: $version"
+
+      - name: Get current versions
+        id: current
+        run: |
+          chart_version=$(grep '^version:' charts/openclaw/Chart.yaml | awk '{print $2}')
+          app_version=$(grep '^appVersion:' charts/openclaw/Chart.yaml | awk '{print $2}' | tr -d '"')
+          echo "chart_version=$chart_version" >> "$GITHUB_OUTPUT"
+          echo "app_version=$app_version" >> "$GITHUB_OUTPUT"
+          echo "Current chart version: $chart_version"
+          echo "Current app version: $app_version"
+
+      - name: Check if update needed
+        id: check
+        run: |
+          if [ "${{ steps.get-version.outputs.version }}" = "${{ steps.current.outputs.app_version }}" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Already on latest version, skipping."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Calculate new chart version
+        if: steps.check.outputs.skip != 'true'
+        id: new-version
+        run: |
+          current="${{ steps.current.outputs.chart_version }}"
+          IFS='.' read -r major minor patch <<< "$current"
+
+          # Use input or default to patch for scheduled runs
+          bump_type="${{ inputs.chart_bump }}"
+          bump_type="${bump_type:-patch}"
+
+          case "$bump_type" in
+            major)
+              major=$((major + 1))
+              minor=0
+              patch=0
+              ;;
+            minor)
+              minor=$((minor + 1))
+              patch=0
+              ;;
+            patch)
+              patch=$((patch + 1))
+              ;;
+          esac
+
+          new_version="${major}.${minor}.${patch}"
+          echo "new_version=$new_version" >> "$GITHUB_OUTPUT"
+          echo "New chart version: $new_version"
+
+      - name: Install yq
+        if: steps.check.outputs.skip != 'true'
+        uses: mikefarah/yq@v4
+
+      - name: Update Chart.yaml
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          yq -i '.version = "${{ steps.new-version.outputs.new_version }}"' charts/openclaw/Chart.yaml
+          yq -i '.appVersion = "${{ steps.get-version.outputs.version }}"' charts/openclaw/Chart.yaml
+
+      - name: Update values.yaml
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          version="${{ steps.get-version.outputs.version }}"
+          # Update only ghcr.io/openclaw/openclaw image tags (init-config and main containers)
+          # Preserves other image tags (node:22 for init-skills, chromium:124)
+          yq -i '
+            .app-template.controllers.main.initContainers.init-config.image.tag = "'"$version"'" |
+            .app-template.controllers.main.containers.main.image.tag = "'"$version"'"
+          ' charts/openclaw/values.yaml
+
+      - name: Show changes
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          git diff
+
+      - name: Commit and push
+        if: steps.check.outputs.skip != 'true' && inputs.dry_run != true
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add charts/openclaw/Chart.yaml charts/openclaw/values.yaml
+          git commit -m "chore: bump openclaw to ${{ steps.get-version.outputs.version }}"
+          git push
+          # docs workflow will auto-trigger and regenerate README
+
+      - name: Dry run summary
+        if: steps.check.outputs.skip != 'true' && inputs.dry_run == true
+        run: |
+          echo "::notice::Dry run - no changes committed"
+          echo "Would bump OpenClaw to ${{ steps.get-version.outputs.version }}"
+          echo "Would bump chart version to ${{ steps.new-version.outputs.new_version }}"
