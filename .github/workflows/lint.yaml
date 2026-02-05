@@ -4,12 +4,14 @@ on:
   pull_request:
     paths:
       - "charts/**"
+      - "ct.yaml"
       - ".github/workflows/lint.yaml"
   push:
     branches:
       - main
     paths:
       - "charts/**"
+      - "ct.yaml"
       - ".github/workflows/lint.yaml"
 
 jobs:

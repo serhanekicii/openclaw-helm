@@ -4,13 +4,13 @@ on:
   pull_request:
     paths:
       - "charts/**"
-      - "README.md.gotmpl"
+      - ".github/workflows/docs.yaml"
   push:
     branches:
       - main
     paths:
       - "charts/**"
-      - "README.md.gotmpl"
+      - ".github/workflows/docs.yaml"
 
 jobs:
   helm-docs:
