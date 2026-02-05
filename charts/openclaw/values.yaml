@@ -29,7 +29,7 @@ app-template:
         init-config:
           image:
             repository: ghcr.io/openclaw/openclaw
-            tag: "2026.1.30"
+            tag: "2026.2.3"
           command:
             - sh
             - -c
@@ -140,7 +140,7 @@ app-template:
             # -- Container image repository
             repository: ghcr.io/openclaw/openclaw
             # -- Container image tag
-            tag: "2026.1.30"
+            tag: "2026.2.3"
             # -- Image pull policy
             pullPolicy: IfNotPresent
           command:

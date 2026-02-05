@@ -2,8 +2,8 @@
 
 [![Helm 3](https://img.shields.io/badge/Helm-3.0+-0f1689?logo=helm&logoColor=white)](https://helm.sh/)
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-1.26+-326ce5?logo=kubernetes&logoColor=white)](https://kubernetes.io/)
-[![App Version](https://img.shields.io/badge/App_Version-2026.1.30-blue)](https://github.com/openclaw/openclaw)
-[![Chart Version](https://img.shields.io/badge/Chart_Version-1.3.2-blue)](https://github.com/serhanekicii/openclaw-helm)
+[![App Version](https://img.shields.io/badge/App_Version-2026.2.3-blue)](https://github.com/openclaw/openclaw)
+[![Chart Version](https://img.shields.io/badge/Chart_Version-1.3.3-blue)](https://github.com/serhanekicii/openclaw-helm)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 Helm chart for deploying OpenClaw on Kubernetes — an AI assistant that connects to messaging platforms and executes tasks autonomously.
@@ -21,7 +21,7 @@ OpenClaw runs as a single-instance deployment (cannot scale horizontally):
 | Gateway | 18789 | Main HTTP/WebSocket interface |
 | Chromium | 9222 | Headless browser for automation (CDP) |
 
-**App Version:** 2026.1.30
+**App Version:** 2026.2.3
 
 ---
 
@@ -103,7 +103,7 @@ app-template:
         main:
           image:
             repository: ghcr.io/your-org/openclaw-fork
-            tag: "2026.1.30"
+            tag: "2026.2.3"
 ```
 
 For images hosted in a private registry inside your cluster:
@@ -116,7 +116,7 @@ app-template:
         main:
           image:
             repository: registry.internal/openclaw
-            tag: "2026.1.30"
+            tag: "2026.2.3"
             pullPolicy: Always
 ```
 
@@ -149,10 +149,10 @@ All values are nested under `app-template:`. See [values.yaml](values.yaml) for 
 | app-template.controllers.main.containers.chromium | object | `{"args":["--headless","--disable-gpu","--no-sandbox","--disable-dev-shm-usage","--remote-debugging-address=0.0.0.0","--remote-debugging-port=9222"],"command":["chromium-browser"],"image":{"repository":"zenika/alpine-chrome","tag":"124"},"probes":{"readiness":{"enabled":true,"spec":{"initialDelaySeconds":5,"periodSeconds":10,"tcpSocket":{"port":9222}},"type":"TCP"}},"resources":{"limits":{"cpu":"1000m","memory":"1Gi"},"requests":{"cpu":"100m","memory":"256Mi"}},"securityContext":{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"runAsGroup":1000,"runAsNonRoot":true,"runAsUser":1000}}` | Chromium sidecar for browser automation (CDP on port 9222) |
 | app-template.controllers.main.containers.chromium.image.repository | string | `"zenika/alpine-chrome"` | Chromium image repository |
 | app-template.controllers.main.containers.chromium.image.tag | string | `"124"` | Chromium image tag |
-| app-template.controllers.main.containers.main | object | `{"args":["gateway","--bind","lan","--port","18789"],"command":["node","dist/index.js"],"env":{},"envFrom":[],"image":{"pullPolicy":"IfNotPresent","repository":"ghcr.io/openclaw/openclaw","tag":"2026.1.30"},"probes":{"liveness":{"enabled":true,"spec":{"failureThreshold":3,"initialDelaySeconds":30,"periodSeconds":30,"tcpSocket":{"port":18789},"timeoutSeconds":5},"type":"TCP"},"readiness":{"enabled":true,"spec":{"failureThreshold":3,"initialDelaySeconds":10,"periodSeconds":10,"tcpSocket":{"port":18789},"timeoutSeconds":5},"type":"TCP"},"startup":{"enabled":true,"spec":{"failureThreshold":30,"initialDelaySeconds":5,"periodSeconds":5,"tcpSocket":{"port":18789},"timeoutSeconds":5},"type":"TCP"}},"resources":{"limits":{"cpu":"2000m","memory":"2Gi"},"requests":{"cpu":"200m","memory":"512Mi"}},"securityContext":{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"runAsGroup":1000,"runAsNonRoot":true,"runAsUser":1000}}` | Main OpenClaw container |
+| app-template.controllers.main.containers.main | object | `{"args":["gateway","--bind","lan","--port","18789"],"command":["node","dist/index.js"],"env":{},"envFrom":[],"image":{"pullPolicy":"IfNotPresent","repository":"ghcr.io/openclaw/openclaw","tag":"2026.2.3"},"probes":{"liveness":{"enabled":true,"spec":{"failureThreshold":3,"initialDelaySeconds":30,"periodSeconds":30,"tcpSocket":{"port":18789},"timeoutSeconds":5},"type":"TCP"},"readiness":{"enabled":true,"spec":{"failureThreshold":3,"initialDelaySeconds":10,"periodSeconds":10,"tcpSocket":{"port":18789},"timeoutSeconds":5},"type":"TCP"},"startup":{"enabled":true,"spec":{"failureThreshold":30,"initialDelaySeconds":5,"periodSeconds":5,"tcpSocket":{"port":18789},"timeoutSeconds":5},"type":"TCP"}},"resources":{"limits":{"cpu":"2000m","memory":"2Gi"},"requests":{"cpu":"200m","memory":"512Mi"}},"securityContext":{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"runAsGroup":1000,"runAsNonRoot":true,"runAsUser":1000}}` | Main OpenClaw container |
 | app-template.controllers.main.containers.main.image.pullPolicy | string | `"IfNotPresent"` | Image pull policy |
 | app-template.controllers.main.containers.main.image.repository | string | `"ghcr.io/openclaw/openclaw"` | Container image repository |
-| app-template.controllers.main.containers.main.image.tag | string | `"2026.1.30"` | Container image tag |
+| app-template.controllers.main.containers.main.image.tag | string | `"2026.2.3"` | Container image tag |
 | app-template.controllers.main.containers.main.resources | object | `{"limits":{"cpu":"2000m","memory":"2Gi"},"requests":{"cpu":"200m","memory":"512Mi"}}` | Resource requests and limits |
 | app-template.controllers.main.initContainers.init-config.command[0] | string | `"sh"` |  |
 | app-template.controllers.main.initContainers.init-config.command[1] | string | `"-c"` |  |
@@ -160,7 +160,7 @@ All values are nested under `app-template:`. See [values.yaml](values.yaml) for 
 | app-template.controllers.main.initContainers.init-config.env[0].name | string | `"CONFIG_MODE"` |  |
 | app-template.controllers.main.initContainers.init-config.env[0].value | string | `"merge"` |  |
 | app-template.controllers.main.initContainers.init-config.image.repository | string | `"ghcr.io/openclaw/openclaw"` |  |
-| app-template.controllers.main.initContainers.init-config.image.tag | string | `"2026.1.30"` |  |
+| app-template.controllers.main.initContainers.init-config.image.tag | string | `"2026.2.3"` |  |
 | app-template.controllers.main.initContainers.init-config.securityContext.allowPrivilegeEscalation | bool | `false` |  |
 | app-template.controllers.main.initContainers.init-config.securityContext.capabilities.add[0] | string | `"CHOWN"` |  |
 | app-template.controllers.main.initContainers.init-config.securityContext.capabilities.add[1] | string | `"DAC_OVERRIDE"` |  |
