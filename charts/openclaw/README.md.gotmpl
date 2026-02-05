@@ -1,0 +1,416 @@
+# 🦞 OpenClaw Helm Chart
+
+{{ template "chart.deprecationWarning" . }}
+
+[![Helm 3](https://img.shields.io/badge/Helm-3.0+-0f1689?logo=helm&logoColor=white)](https://helm.sh/)
+[![Kubernetes](https://img.shields.io/badge/Kubernetes-1.26+-326ce5?logo=kubernetes&logoColor=white)](https://kubernetes.io/)
+[![App Version](https://img.shields.io/badge/App_Version-{{ .AppVersion }}-blue)]({{ .Home }})
+[![Chart Version](https://img.shields.io/badge/Chart_Version-{{ .Version }}-blue)]({{ index .Sources 0 }})
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+{{ template "chart.description" . }}
+
+Built on [bjw-s app-template](https://github.com/bjw-s-labs/helm-charts). For a detailed walkthrough, see the [blog post]({{ index .Sources 1 }}).
+
+---
+
+## Architecture
+
+OpenClaw runs as a single-instance deployment (cannot scale horizontally):
+
+| Component | Port | Description |
+|-----------|------|-------------|
+| Gateway | 18789 | Main HTTP/WebSocket interface |
+| Chromium | 9222 | Headless browser for automation (CDP) |
+
+**App Version:** {{ .AppVersion }}
+
+---
+
+## Installation
+
+### Prerequisites
+
+- Kubernetes `{{ .KubeVersion }}`
+- Helm 3.0+
+- API key from a supported LLM provider (Anthropic, OpenAI, etc.)
+
+### Steps
+
+1. Add the repository:
+
+```bash
+helm repo add {{ .Name }} https://serhanekicii.github.io/{{ .Name }}-helm
+helm repo update
+```
+
+2. Create namespace and secret:
+
+```bash
+kubectl create namespace {{ .Name }}
+kubectl create secret generic {{ .Name }}-env-secret -n {{ .Name }} \
+  --from-literal=ANTHROPIC_API_KEY=sk-ant-xxx \
+  --from-literal=GATEWAY_TOKEN=your-token
+```
+
+3. Get default values:
+
+```bash
+helm show values {{ .Name }}/{{ .Name }} > values.yaml
+```
+
+4. Reference your secret in values.yaml:
+
+```yaml
+app-template:
+  controllers:
+    main:
+      containers:
+        main:
+          envFrom:
+            - secretRef:
+                name: {{ .Name }}-env-secret
+```
+
+5. Install:
+
+```bash
+helm install {{ .Name }} {{ .Name }}/{{ .Name }} -n {{ .Name }} -f values.yaml
+```
+
+6. Pair your device:
+
+```bash
+# Access the web UI
+kubectl port-forward -n {{ .Name }} svc/{{ .Name }} 18789:18789
+# Open http://localhost:18789, enter your Gateway Token, click Connect
+
+# Approve the pairing request
+kubectl exec -n {{ .Name }} deployment/{{ .Name }} -- node dist/index.js devices list
+kubectl exec -n {{ .Name }} deployment/{{ .Name }} -- node dist/index.js devices approve <REQUEST_ID>
+```
+
+---
+
+<details>
+<summary><b>Using a Fork or Local Image</b></summary>
+
+If you maintain a fork of OpenClaw or build your own image, point to your container registry:
+
+```yaml
+app-template:
+  controllers:
+    main:
+      containers:
+        main:
+          image:
+            repository: ghcr.io/your-org/{{ .Name }}-fork
+            tag: "{{ .AppVersion }}"
+```
+
+For images hosted in a private registry inside your cluster:
+
+```yaml
+app-template:
+  controllers:
+    main:
+      containers:
+        main:
+          image:
+            repository: registry.internal/{{ .Name }}
+            tag: "{{ .AppVersion }}"
+            pullPolicy: Always
+```
+
+</details>
+
+---
+
+## Uninstall
+
+```bash
+helm uninstall {{ .Name }} -n {{ .Name }}
+kubectl delete pvc -n {{ .Name }} -l app.kubernetes.io/name={{ .Name }}  # optional: remove data
+```
+
+---
+
+## Configuration
+
+All values are nested under `app-template:`. See [values.yaml](values.yaml) for full reference.
+
+### Config Mode
+
+The `configMode` setting controls how Helm-managed config merges with runtime changes:
+
+| Mode | Behavior |
+|------|----------|
+| `merge` (default) | Helm values are deep-merged with existing config. Runtime changes (e.g., paired devices, UI settings) are preserved. |
+| `overwrite` | Helm values completely replace existing config. Use for strict GitOps where config should match values.yaml exactly. |
+
+```yaml
+configMode: overwrite  # or "merge" (default)
+```
+
+<details>
+<summary><b>Values Table</b></summary>
+
+{{ template "chart.valuesSection" . }}
+
+</details>
+
+### Security
+
+The chart follows security best practices:
+
+- All containers run as non-root (UID 1000)
+- All capabilities dropped
+- Privilege escalation disabled
+- Network policies available for workload isolation
+
+> **Important:** OpenClaw has shell access and processes untrusted input. Use network policies and limit exposure. See the [OpenClaw Security Guide](https://docs.openclaw.ai/gateway/security) for best practices.
+
+### Network Policy
+
+Network policies isolate OpenClaw from internal cluster services, limiting blast radius if compromised:
+
+```yaml
+app-template:
+  networkpolicies:
+    main:
+      enabled: true
+```
+
+Default policy allows:
+- Ingress from `gateway-system` namespace on port 18789
+- Egress to kube-dns
+- Egress to public internet (blocks RFC1918 ranges)
+
+Requires a CNI with NetworkPolicy support (Calico, Cilium).
+
+<details>
+<summary><b>Allowing Internal Services</b></summary>
+
+To allow OpenClaw to reach internal services (e.g., Vault, Ollama), add egress rules:
+
+```yaml
+app-template:
+  networkpolicies:
+    main:
+      enabled: true
+      rules:
+        egress:
+          # DNS (required)
+          - to:
+              - namespaceSelector:
+                  matchLabels:
+                    kubernetes.io/metadata.name: kube-system
+                podSelector:
+                  matchLabels:
+                    k8s-app: kube-dns
+            ports:
+              - protocol: UDP
+                port: 53
+          # Public internet (blocks RFC1918)
+          - to:
+              - ipBlock:
+                  cidr: 0.0.0.0/0
+                  except:
+                    - 10.0.0.0/8
+                    - 172.16.0.0/12
+                    - 192.168.0.0/16
+          # Vault
+          - to:
+              - namespaceSelector:
+                  matchLabels:
+                    kubernetes.io/metadata.name: vault
+            ports:
+              - protocol: TCP
+                port: 8200
+          # Ollama
+          - to:
+              - namespaceSelector:
+                  matchLabels:
+                    kubernetes.io/metadata.name: ollama
+            ports:
+              - protocol: TCP
+                port: 11434
+```
+
+</details>
+
+### Browser Automation
+
+Chromium sidecar provides headless browser via CDP on port 9222.
+
+To disable:
+
+```yaml
+app-template:
+  controllers:
+    main:
+      containers:
+        chromium:
+          enabled: false
+```
+
+### Skills
+
+The `init-skills` container provides declarative skill management from [ClawHub](https://clawhub.com):
+
+```yaml
+app-template:
+  controllers:
+    main:
+      initContainers:
+        init-skills:
+          command:
+            - sh
+            - -c
+            - |
+              cd /home/node/.{{ .Name }}/workspace && mkdir -p skills
+              for skill in weather miniflux; do
+                npx -y clawhub install "$skill" --no-input || true
+              done
+```
+
+### Automatic Rollouts on ConfigMap/Secret Changes
+
+For automatic pod restarts when ConfigMap/Secret changes, use [Stakater Reloader](https://github.com/stakater/Reloader) or [ArgoCD](https://argo-cd.readthedocs.io/). See the [blog post]({{ index .Sources 1 }}) for detailed setup.
+
+```yaml
+app-template:
+  defaultPodOptions:
+    annotations:
+      reloader.stakater.com/auto: "true"
+```
+
+### Persistence
+
+Persistent storage is enabled by default (5Gi).
+
+To disable (data lost on restart):
+
+```yaml
+app-template:
+  persistence:
+    data:
+      enabled: false
+```
+
+<details>
+<summary><b>Ingress</b></summary>
+
+```yaml
+app-template:
+  ingress:
+    main:
+      enabled: true
+      className: your-ingress-class
+      hosts:
+        - host: {{ .Name }}.example.com
+          paths:
+            - path: /
+              pathType: Prefix
+              service:
+                identifier: main
+                port: http
+      tls:
+        - secretName: {{ .Name }}-tls
+          hosts:
+            - {{ .Name }}.example.com
+```
+
+</details>
+
+<details>
+<summary><b>Internal CA Trust</b></summary>
+
+For HTTPS to internal services with private CAs:
+
+```yaml
+app-template:
+  persistence:
+    ca-bundle:
+      enabled: true
+      type: configMap
+      name: ca-bundle
+      advancedMounts:
+        main:
+          main:
+            - path: /etc/ssl/certs/ca-bundle.crt
+              subPath: ca-bundle.crt
+              readOnly: true
+  controllers:
+    main:
+      containers:
+        main:
+          env:
+            REQUESTS_CA_BUNDLE: /etc/ssl/certs/ca-bundle.crt
+```
+
+</details>
+
+<details>
+<summary><b>Resource Limits</b></summary>
+
+Default resources for main container:
+
+```yaml
+app-template:
+  controllers:
+    main:
+      containers:
+        main:
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: 2000m
+              memory: 2Gi
+```
+
+</details>
+
+---
+
+## Troubleshooting
+
+<details>
+<summary><b>Debug Commands</b></summary>
+
+```bash
+# Pod status
+kubectl get pods -n {{ .Name }}
+
+# Logs
+kubectl logs -n {{ .Name }} deployment/{{ .Name }}
+
+# Port forward
+kubectl port-forward -n {{ .Name }} svc/{{ .Name }} 18789:18789
+```
+
+</details>
+
+---
+
+## Development
+
+```bash
+helm lint charts/{{ .Name }}
+helm dependency update charts/{{ .Name }}
+helm template test charts/{{ .Name }} --debug
+```
+
+---
+
+## Dependencies
+
+| Repository | Name | Version |
+|------------|------|---------|
+| https://bjw-s-labs.github.io/helm-charts/ | app-template | 4.6.2 |
+
+## License
+
+MIT

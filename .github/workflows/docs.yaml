@@ -1,0 +1,36 @@
+name: Generate Docs
+
+on:
+  pull_request:
+    paths:
+      - "charts/**"
+      - "README.md.gotmpl"
+  push:
+    branches:
+      - main
+    paths:
+      - "charts/**"
+      - "README.md.gotmpl"
+
+jobs:
+  helm-docs:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install helm-docs
+        run: |
+          curl -sSL https://github.com/norwoodj/helm-docs/releases/download/v1.14.2/helm-docs_1.14.2_Linux_x86_64.tar.gz | tar xz
+          sudo mv helm-docs /usr/local/bin/
+
+      - name: Run helm-docs
+        run: |
+          helm-docs --chart-search-root=charts
+
+      - name: Check for changes
+        run: |
+          if ! git diff --exit-code; then
+            echo "::error::Documentation is out of date. Run 'helm-docs --chart-search-root=charts' locally and commit the changes."
+            exit 1
+          fi

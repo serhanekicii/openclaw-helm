@@ -1,0 +1,56 @@
+name: Chart Testing
+
+on:
+  pull_request:
+    paths:
+      - "charts/**"
+      - "ct.yaml"
+  push:
+    branches:
+      - main
+    paths:
+      - "charts/**"
+      - "ct.yaml"
+
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+
+      - name: Set up chart-testing
+        uses: helm/chart-testing-action@v2
+
+      - name: Add dependency repos
+        run: |
+          helm repo add bjw-s https://bjw-s-labs.github.io/helm-charts/
+
+      - name: Lint charts
+        run: ct lint --config ct.yaml
+
+  template:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+
+      - name: Add dependency repos
+        run: |
+          helm repo add bjw-s https://bjw-s-labs.github.io/helm-charts/
+
+      - name: Build dependencies
+        run: |
+          helm dependency build charts/openclaw
+
+      - name: Template chart
+        run: |
+          helm template test charts/openclaw --debug

@@ -10,31 +10,79 @@
 # - IPv6 exact addresses may work but are untested
 # - Recommend single-stack IPv4 deployments for simplicity
 
+# -- Config mode: `merge` preserves runtime changes, `overwrite` for strict GitOps
+configMode: merge
+
 app-template:
   defaultPodOptions:
+    # -- Pod security context
     securityContext:
       fsGroup: 1000
       fsGroupChangePolicy: OnRootMismatch
+    # ========================================================================
+    # Live Config Reload (Reloader)
+    # ========================================================================
+    # Automatically restart pods when ConfigMap or Secret changes.
+    # Requires Stakater Reloader: https://github.com/stakater/Reloader
+    #
+    # Uncomment to enable:
+    # annotations:
+    #   reloader.stakater.com/auto: "true"
+    #
+    # Or for specific resources only:
+    #   configmap.reloader.stakater.com/reload: "openclaw"
+    #   secret.reloader.stakater.com/reload: "openclaw-env-secret"
 
   controllers:
     main:
-      # Single replica only - OpenClaw does not support horizontal scaling
+      # -- Number of replicas (must be 1, OpenClaw doesn't support horizontal scaling)
       replicas: 1
+      # -- Deployment strategy
+      strategy: Recreate
 
       initContainers:
-        # Init container runs as root to chown config file to app user.
-        # This is required because the PVC is initially empty and fsGroup only
-        # affects directory ownership, not files copied into it.
+        # Init container handles config setup with merge/overwrite modes.
+        # Uses OpenClaw image for Node.js runtime (required for merge mode).
+        # Runs as root to chown files to app user (UID 1000).
         init-config:
           image:
-            repository: busybox
-            tag: "1.37"
+            repository: ghcr.io/openclaw/openclaw
+            tag: "2026.1.30"
           command:
             - sh
             - -c
             - |
-              cp /config/openclaw.json /home/node/.openclaw/openclaw.json
-              chown 1000:1000 /home/node/.openclaw/openclaw.json
+              mkdir -p /home/node/.openclaw
+              CONFIG_MODE="${CONFIG_MODE:-merge}"
+
+              if [ "$CONFIG_MODE" = "merge" ] && [ -f /home/node/.openclaw/openclaw.json ]; then
+                echo "Merging Helm config with existing config..."
+                node -e "
+                  const fs = require('fs');
+                  const existing = JSON.parse(fs.readFileSync('/home/node/.openclaw/openclaw.json', 'utf8'));
+                  const helm = JSON.parse(fs.readFileSync('/config/openclaw.json', 'utf8'));
+                  const deepMerge = (target, source) => {
+                    for (const key of Object.keys(source)) {
+                      if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+                        target[key] = target[key] || {};
+                        deepMerge(target[key], source[key]);
+                      } else {
+                        target[key] = source[key];
+                      }
+                    }
+                    return target;
+                  };
+                  const merged = deepMerge(existing, helm);
+                  fs.writeFileSync('/home/node/.openclaw/openclaw.json', JSON.stringify(merged, null, 2));
+                "
+              else
+                echo "Copying Helm config (overwrite mode or fresh install)..."
+                cp /config/openclaw.json /home/node/.openclaw/openclaw.json
+              fi
+              chown -R 1000:1000 /home/node/.openclaw
+          env:
+            - name: CONFIG_MODE
+              value: "merge"
           securityContext:
             runAsUser: 0
             allowPrivilegeEscalation: false
@@ -89,10 +137,14 @@ app-template:
                 - ALL
 
       containers:
+        # -- Main OpenClaw container
         main:
           image:
+            # -- Container image repository
             repository: ghcr.io/openclaw/openclaw
+            # -- Container image tag
             tag: "2026.1.30"
+            # -- Image pull policy
             pullPolicy: IfNotPresent
           command:
             - node
@@ -123,6 +175,7 @@ app-template:
             capabilities:
               drop:
                 - ALL
+          # -- Resource requests and limits
           resources:
             requests:
               cpu: 200m
@@ -162,11 +215,12 @@ app-template:
                 timeoutSeconds: 5
                 failureThreshold: 30
 
-        # Chromium sidecar for browser automation
-        # Provides headless Chrome via CDP for web scraping and automation skills
+        # -- Chromium sidecar for browser automation (CDP on port 9222)
         chromium:
           image:
+            # -- Chromium image repository
             repository: zenika/alpine-chrome
+            # -- Chromium image tag
             tag: "124"
           command:
             - chromium-browser
@@ -375,3 +429,72 @@ app-template:
     #         - path: /etc/ssl/certs/ca-bundle.crt
     #           subPath: ca-bundle.crt
     #           readOnly: true
+
+  # ============================================================================
+  # Network Policies
+  # ============================================================================
+  # Network policies provide workload isolation by controlling traffic to/from
+  # OpenClaw pods. Requires a CNI that supports NetworkPolicy (Calico, Cilium,
+  # Weave). Flannel without network policy controller will NOT enforce these.
+  #
+  # IMPORTANT: When enabled, ALL traffic is denied by default. You must
+  # explicitly allow required traffic via ingress/egress rules.
+  networkpolicies:
+    main:
+      enabled: false
+      controller: main
+      policyTypes:
+        - Ingress
+        - Egress
+      rules:
+        ingress:
+          # Allow ingress from gateway namespace (adjust label to match your setup)
+          # Example: allows traffic from pods in namespace with label
+          # kubernetes.io/metadata.name: gateway-system
+          - from:
+              - namespaceSelector:
+                  matchLabels:
+                    kubernetes.io/metadata.name: gateway-system
+            ports:
+              - protocol: TCP
+                port: 18789
+          # Alternatively, allow from ingress-nginx namespace:
+          # - from:
+          #     - namespaceSelector:
+          #         matchLabels:
+          #           kubernetes.io/metadata.name: ingress-nginx
+          #   ports:
+          #     - protocol: TCP
+          #       port: 18789
+        egress:
+          # DNS resolution (kube-dns/coredns)
+          - to:
+              - namespaceSelector:
+                  matchLabels:
+                    kubernetes.io/metadata.name: kube-system
+                podSelector:
+                  matchLabels:
+                    k8s-app: kube-dns
+            ports:
+              - protocol: UDP
+                port: 53
+              - protocol: TCP
+                port: 53
+          # External internet (API providers, package registries, etc.)
+          # Allows all traffic to public IPs while blocking private RFC1918 ranges
+          # This prevents OpenClaw from accessing internal cluster services
+          - to:
+              - ipBlock:
+                  cidr: 0.0.0.0/0
+                  except:
+                    - 10.0.0.0/8
+                    - 172.16.0.0/12
+                    - 192.168.0.0/16
+          # Vault access (uncomment if using HashiCorp Vault for secrets)
+          # - to:
+          #     - namespaceSelector:
+          #         matchLabels:
+          #           kubernetes.io/metadata.name: vault
+          #   ports:
+          #     - protocol: TCP
+          #       port: 8200
