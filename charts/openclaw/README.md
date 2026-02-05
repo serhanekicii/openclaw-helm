@@ -339,7 +339,7 @@ app-template:
             - -c
             - |
               cd /home/node/.openclaw/workspace && mkdir -p skills
-              for skill in weather miniflux; do
+              for skill in weather; do
                 npx -y clawhub install "$skill" --no-input || true
               done
 ```
