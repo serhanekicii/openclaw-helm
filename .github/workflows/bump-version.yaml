@@ -28,6 +28,8 @@ on:
         type: boolean
         default: false
 
+concurrency: chart_releaser
+
 jobs:
   bump:
     runs-on: ubuntu-24.04
@@ -153,6 +155,21 @@ jobs:
             sed -i "s/chromiumVersion: \"${old_chromium}\"/chromiumVersion: \"${new_chromium}\"/" charts/openclaw/values.yaml
             sed -i "s|zenika/alpine-chrome:${old_chromium}|zenika/alpine-chrome:${new_chromium}|g" charts/openclaw/Chart.yaml
             echo "Updated chromium: ${old_chromium} -> ${new_chromium}"
+          fi
+
+      - name: Update ArtifactHub changelog
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          changelog=""
+          if [ "${{ steps.check.outputs.openclaw_changed }}" = "true" ]; then
+            changelog="${changelog}- kind: changed\n  description: \"Bump OpenClaw to ${{ steps.get-version.outputs.version }}\"\n"
+          fi
+          if [ "${{ steps.check.outputs.chromium_changed }}" = "true" ]; then
+            changelog="${changelog}- kind: changed\n  description: \"Bump Chromium to ${{ inputs.chromium_version }}\"\n"
+          fi
+          if [ -n "$changelog" ]; then
+            printf "%b" "$changelog" > /tmp/changelog.yaml
+            yq -i '.annotations["artifacthub.io/changes"] = load_str("/tmp/changelog.yaml")' charts/openclaw/Chart.yaml
           fi
 
       - name: Install helm-docs
