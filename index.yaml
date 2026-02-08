@@ -4,6 +4,64 @@ entries:
   - annotations:
       artifacthub.io/category: ai-machine-learning
       artifacthub.io/changes: |
+        - kind: changed
+          description: Security hardening - readOnlyRootFilesystem on all containers
+        - kind: changed
+          description: Init containers run as non-root (no more CHOWN/DAC_OVERRIDE caps)
+        - kind: added
+          description: Chromium sidecar enable/disable toggle and version management
+        - kind: added
+          description: Post-install notes (NOTES.txt)
+        - kind: changed
+          description: Centralized image versions (openclawVersion, chromiumVersion)
+        - kind: changed
+          description: CI bump workflow supports independent chromium version updates
+        - kind: changed
+          description: NetworkPolicy blocks additional reserved ranges (link-local, CGN)
+      artifacthub.io/images: |
+        - name: openclaw
+          image: ghcr.io/openclaw/openclaw:2026.2.6
+        - name: chromium
+          image: zenika/alpine-chrome:124
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: Documentation
+          url: https://serhanekici.com/openclaw-helm.html
+        - name: Source
+          url: https://github.com/serhanekicii/openclaw-helm
+    apiVersion: v2
+    appVersion: 2026.2.6
+    created: "2026-02-08T19:18:56.767127843Z"
+    dependencies:
+    - name: app-template
+      repository: https://bjw-s-labs.github.io/helm-charts/
+      version: 4.6.2
+    description: Helm chart for deploying OpenClaw on Kubernetes — an AI assistant
+      that connects to messaging platforms and executes tasks autonomously.
+    digest: 60b067ce73a3ef5ce5afa1ff284919e9811c822d3448acd18375b978d5ac3933
+    home: https://github.com/openclaw/openclaw
+    icon: https://raw.githubusercontent.com/openclaw/openclaw/main/docs/assets/openclaw-logo-text.png
+    keywords:
+    - ai
+    - assistant
+    - chatbot
+    - automation
+    - kubernetes
+    kubeVersion: '>=1.26.0-0'
+    maintainers:
+    - name: Serhan Ekici
+      url: https://serhanekici.com
+    name: openclaw
+    sources:
+    - https://github.com/serhanekicii/openclaw-helm
+    - https://serhanekici.com/openclaw-helm.html
+    type: application
+    urls:
+    - https://github.com/serhanekicii/openclaw-helm/releases/download/openclaw-1.3.7/openclaw-1.3.7.tgz
+    version: 1.3.7
+  - annotations:
+      artifacthub.io/category: ai-machine-learning
+      artifacthub.io/changes: |
         - kind: added
           description: Network policy support
         - kind: added
@@ -251,4 +309,4 @@ entries:
     urls:
     - https://github.com/serhanekicii/openclaw-helm/releases/download/openclaw-1.0.0/openclaw-1.0.0.tgz
     version: 1.0.0
-generated: "2026-02-08T16:53:01.396864518Z"
+generated: "2026-02-08T19:18:56.767154352Z"
