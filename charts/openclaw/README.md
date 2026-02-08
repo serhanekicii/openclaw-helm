@@ -274,6 +274,7 @@ This allows:
 The chart follows security best practices:
 
 - All containers run as non-root (UID 1000)
+- Read-only root filesystem on all containers
 - All capabilities dropped
 - Privilege escalation disabled
 - Network policies available for workload isolation
@@ -294,7 +295,7 @@ app-template:
 Default policy allows:
 - Ingress from `gateway-system` namespace on port 18789
 - Egress to kube-dns
-- Egress to public internet (blocks RFC1918 ranges)
+- Egress to public internet (blocks private/reserved ranges)
 
 Requires a CNI with NetworkPolicy support (Calico, Cilium).
 
