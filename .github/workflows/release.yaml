@@ -62,6 +62,49 @@ jobs:
             echo "bumped=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Generate ArtifactHub changelog
+        run: |
+          # Find the latest existing release tag
+          last_tag=$(git tag --sort=-version:refname | grep '^openclaw-' | head -1)
+          if [ -z "$last_tag" ]; then
+            echo "No previous tag found, using all commits"
+            range="HEAD"
+          else
+            echo "Generating changelog since $last_tag"
+            range="${last_tag}..HEAD"
+          fi
+
+          # Parse conventional commits into ArtifactHub changelog YAML
+          changelog=""
+          while IFS= read -r msg; do
+            [ -z "$msg" ] && continue
+            # Skip bot commits
+            case "$msg" in "chore: update chart version"*|"chore: regenerate"*) continue;; esac
+            # Map conventional commit type to ArtifactHub kind
+            kind="changed"
+            case "$msg" in
+              feat:*|feat\(*) kind="added" ;;
+              fix:*|fix\(*)   kind="fixed" ;;
+            esac
+            # Strip type prefix for description
+            desc=$(echo "$msg" | sed 's/^[a-z]*\([^)]*\)\?: *//')
+            desc="$(echo "$desc" | cut -c1 | tr '[:lower:]' '[:upper:]')$(echo "$desc" | cut -c2-)"
+            # Escape characters that would break YAML double-quoted strings
+            desc="${desc//\\/\\\\}"
+            desc="${desc//\"/\\\"}"
+            changelog="${changelog}- kind: ${kind}\n  description: \"${desc}\"\n"
+          done < <(git log --format='%s' "$range" -- charts/)
+
+          if [ -n "$changelog" ]; then
+            # Write changelog to temp file and update Chart.yaml
+            printf "%b" "$changelog" > /tmp/changelog.yaml
+            yq -i '.annotations["artifacthub.io/changes"] = load_str("/tmp/changelog.yaml")' charts/openclaw/Chart.yaml
+            echo "Updated ArtifactHub changelog:"
+            cat /tmp/changelog.yaml
+          else
+            echo "No chart-related commits found, keeping existing changelog"
+          fi
+
       - name: Regenerate docs
         run: |
           helm-docs --chart-search-root=charts
