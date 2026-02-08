@@ -49,7 +49,7 @@ helm repo update
 kubectl create namespace openclaw
 kubectl create secret generic openclaw-env-secret -n openclaw \
   --from-literal=ANTHROPIC_API_KEY=sk-ant-xxx \
-  --from-literal=GATEWAY_TOKEN=your-token
+  --from-literal=OPENCLAW_GATEWAY_TOKEN=your-token
 ```
 
 3. Get default values:

@@ -51,7 +51,7 @@ helm repo update
 kubectl create namespace {{ .Name }}
 kubectl create secret generic {{ .Name }}-env-secret -n {{ .Name }} \
   --from-literal=ANTHROPIC_API_KEY=sk-ant-xxx \
-  --from-literal=GATEWAY_TOKEN=your-token
+  --from-literal=OPENCLAW_GATEWAY_TOKEN=your-token
 ```
 
 3. Get default values:
