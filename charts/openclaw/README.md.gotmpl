@@ -22,7 +22,7 @@ OpenClaw runs as a single-instance deployment (cannot scale horizontally):
 | Component | Port | Description |
 |-----------|------|-------------|
 | Gateway | 18789 | Main HTTP/WebSocket interface |
-| Chromium | 9222 | Headless browser for automation (CDP) |
+| Chromium | 9222 | Headless browser for automation (CDP, optional) |
 
 **App Version:** {{ .AppVersion }}
 
@@ -299,7 +299,9 @@ app-template:
             - |
               cd /home/node/.{{ .Name }}/workspace && mkdir -p skills
               for skill in weather; do
-                npx -y clawhub install "$skill" --no-input || true
+                if ! npx -y clawhub install "$skill" --no-input; then
+                  echo "WARNING: Failed to install skill: $skill"
+                fi
               done
 ```
 

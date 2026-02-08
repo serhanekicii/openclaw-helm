@@ -1,0 +1,21 @@
+OpenClaw has been deployed!
+
+  Chart version: {{ .Chart.Version }}
+  App version:   {{ .Chart.AppVersion }}
+
+1. Wait for the pod to be ready:
+
+   kubectl get pods -n {{ .Release.Namespace }} -l app.kubernetes.io/name={{ .Release.Name }}
+
+2. Access the gateway:
+
+   kubectl port-forward -n {{ .Release.Namespace }} svc/{{ .Release.Name }} 18789:18789
+
+   Then open http://localhost:18789 and enter your Gateway Token.
+
+3. Approve the pairing request:
+
+   kubectl exec -n {{ .Release.Namespace }} deployment/{{ .Release.Name }} -- node dist/index.js devices list
+   kubectl exec -n {{ .Release.Namespace }} deployment/{{ .Release.Name }} -- node dist/index.js devices approve <REQUEST_ID>
+
+Documentation: https://serhanekici.com/openclaw-helm.html

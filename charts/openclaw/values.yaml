@@ -6,6 +6,10 @@
 # - Do NOT increase replica count
 #
 app-template:
+  # -- OpenClaw image version (used by all OpenClaw containers)
+  openclawVersion: "2026.2.6"
+  # -- Chromium sidecar image version
+  chromiumVersion: "124"
   # -- Config mode: `merge` preserves runtime changes, `overwrite` for strict GitOps
   configMode: merge
 
@@ -25,11 +29,12 @@ app-template:
       initContainers:
         # Init container handles config setup with merge/overwrite modes.
         # Uses OpenClaw image for Node.js runtime (required for merge mode).
-        # Runs as root to chown files to app user (UID 1000).
         init-config:
           image:
             repository: ghcr.io/openclaw/openclaw
-            tag: "2026.2.6"
+            tag: "{{ .Values.openclawVersion }}"
+          # -- Init-config startup script
+          # @default -- See values.yaml
           command:
             - sh
             - -c
@@ -42,7 +47,7 @@ app-template:
 
               if [ "$CONFIG_MODE" = "merge" ] && [ -f /home/node/.openclaw/openclaw.json ]; then
                 log "Mode: merge - merging Helm config with existing config"
-                node -e "
+                if node -e "
                   const fs = require('fs');
                   // Strip JSON5 single-line comments while preserving // inside strings (e.g. URLs)
                   const stripComments = (s) => {
@@ -60,7 +65,13 @@ app-template:
                     }
                     return r;
                   };
-                  const existing = JSON.parse(stripComments(fs.readFileSync('/home/node/.openclaw/openclaw.json', 'utf8')));
+                  let existing;
+                  try {
+                    existing = JSON.parse(stripComments(fs.readFileSync('/home/node/.openclaw/openclaw.json', 'utf8')));
+                  } catch (e) {
+                    console.error('[init-config] Warning: existing config is not valid JSON, will overwrite');
+                    process.exit(1);
+                  }
                   const helm = JSON.parse(stripComments(fs.readFileSync('/config/openclaw.json', 'utf8')));
                   const deepMerge = (target, source) => {
                     for (const key of Object.keys(source)) {
@@ -75,33 +86,41 @@ app-template:
                   };
                   const merged = deepMerge(existing, helm);
                   fs.writeFileSync('/home/node/.openclaw/openclaw.json', JSON.stringify(merged, null, 2));
-                "
-                log "Config merged successfully"
+                "; then
+                  log "Config merged successfully"
+                else
+                  log "WARNING: Merge failed (existing config may not be valid JSON), falling back to overwrite"
+                  cp /config/openclaw.json /home/node/.openclaw/openclaw.json
+                fi
               else
-                log "Mode: overwrite - copying Helm config (fresh install or overwrite mode)"
+                if [ ! -f /home/node/.openclaw/openclaw.json ]; then
+                  log "Fresh install - writing initial config"
+                else
+                  log "Mode: overwrite - replacing config with Helm values"
+                fi
                 cp /config/openclaw.json /home/node/.openclaw/openclaw.json
               fi
-              chown -R 1000:1000 /home/node/.openclaw
               log "Config initialization complete"
           env:
             CONFIG_MODE: "{{ .Values.configMode | default \"merge\" }}"
           securityContext:
-            runAsUser: 0
+            runAsUser: 1000
+            runAsGroup: 1000
+            runAsNonRoot: true
+            readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false
             capabilities:
               drop:
                 - ALL
-              add:
-                - CHOWN
-                - DAC_OVERRIDE
-                - FOWNER
 
         # Install ClawHub skills and runtime dependencies (idempotent)
         # Skills are installed from https://clawhub.com
         init-skills:
           image:
-            repository: node
-            tag: "22"
+            repository: ghcr.io/openclaw/openclaw
+            tag: "{{ .Values.openclawVersion }}"
+          # -- Init-skills startup script
+          # @default -- See values.yaml
           command:
             - sh
             - -c
@@ -128,21 +147,27 @@ app-template:
               # ============================================================
               # Install skills from ClawHub (https://clawhub.com)
               # Add skill slugs to the list below to install them declaratively.
+              mkdir -p /home/node/.openclaw/workspace/skills
               cd /home/node/.openclaw/workspace
-              mkdir -p skills
               for skill in weather; do
                 if [ -n "$skill" ] && [ ! -d "skills/${skill##*/}" ]; then
                   log "Installing skill: $skill"
-                  npx -y clawhub install "$skill" --no-input || true
+                  if ! npx -y clawhub install "$skill" --no-input; then
+                    log "WARNING: Failed to install skill: $skill"
+                  fi
                 else
                   log "Skill already installed: $skill"
                 fi
               done
               log "Skills initialization complete"
+          env:
+            HOME: /tmp
+            NPM_CONFIG_CACHE: /tmp/.npm
           securityContext:
             runAsUser: 1000
             runAsGroup: 1000
             runAsNonRoot: true
+            readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false
             capabilities:
               drop:
@@ -155,7 +180,7 @@ app-template:
             # -- Container image repository
             repository: ghcr.io/openclaw/openclaw
             # -- Container image tag
-            tag: "2026.2.6"
+            tag: "{{ .Values.openclawVersion }}"
             # -- Image pull policy
             pullPolicy: IfNotPresent
           command:
@@ -183,6 +208,7 @@ app-template:
             runAsUser: 1000
             runAsGroup: 1000
             runAsNonRoot: true
+            readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false
             capabilities:
               drop:
@@ -229,11 +255,13 @@ app-template:
 
         # -- Chromium sidecar for browser automation (CDP on port 9222)
         chromium:
+          # -- Enable/disable the Chromium browser sidecar
+          enabled: true
           image:
             # -- Chromium image repository
             repository: zenika/alpine-chrome
             # -- Chromium image tag
-            tag: "124"
+            tag: "{{ .Values.chromiumVersion }}"
           command:
             - chromium-browser
           args:
@@ -243,10 +271,15 @@ app-template:
             - --disable-dev-shm-usage
             - --remote-debugging-address=0.0.0.0
             - --remote-debugging-port=9222
+            - --user-data-dir=/tmp/chromium
+          env:
+            # Fontconfig cache needs a writable directory
+            XDG_CACHE_HOME: /tmp
           securityContext:
             runAsUser: 1000
             runAsGroup: 1000
             runAsNonRoot: true
+            readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false
             capabilities:
               drop:
@@ -259,14 +292,34 @@ app-template:
               cpu: 1000m
               memory: 1Gi
           probes:
+            liveness:
+              enabled: true
+              custom: true
+              spec:
+                tcpSocket:
+                  port: 9222
+                initialDelaySeconds: 10
+                periodSeconds: 30
+                timeoutSeconds: 5
+                failureThreshold: 6
             readiness:
               enabled: true
-              type: TCP
+              custom: true
               spec:
                 tcpSocket:
                   port: 9222
                 initialDelaySeconds: 5
                 periodSeconds: 10
+            startup:
+              enabled: true
+              custom: true
+              spec:
+                tcpSocket:
+                  port: 9222
+                initialDelaySeconds: 5
+                periodSeconds: 5
+                timeoutSeconds: 5
+                failureThreshold: 12
 
   configMaps:
     config:
@@ -304,8 +357,8 @@ app-template:
               "defaults": {
                 "workspace": "/home/node/.openclaw/workspace",
                 "model": {
-                  // Uses OPENAI_API_KEY from environment
-                  "primary": "openai/gpt-4o"
+                  // Uses ANTHROPIC_API_KEY from environment
+                  "primary": "anthropic/claude-opus-4-6"
                 },
                 "userTimezone": "UTC",
                 "timeoutSeconds": 600,
@@ -431,6 +484,21 @@ app-template:
           main:
             - path: /home/node/.openclaw
 
+    # Writable /tmp for containers with readOnlyRootFilesystem
+    tmp:
+      enabled: true
+      type: emptyDir
+      advancedMounts:
+        main:
+          init-config:
+            - path: /tmp
+          init-skills:
+            - path: /tmp
+          main:
+            - path: /tmp
+          chromium:
+            - path: /tmp
+
     # CA bundle for internal TLS (optional)
     # Use with trust-manager or similar to trust internal CAs
     # ca-bundle:
@@ -495,7 +563,7 @@ app-template:
               - protocol: TCP
                 port: 53
           # External internet (API providers, package registries, etc.)
-          # Allows all traffic to public IPs while blocking private RFC1918 ranges
+          # Allows all traffic to public IPs while blocking private/reserved ranges
           # This prevents OpenClaw from accessing internal cluster services
           - to:
               - ipBlock:
@@ -504,6 +572,8 @@ app-template:
                     - 10.0.0.0/8
                     - 172.16.0.0/12
                     - 192.168.0.0/16
+                    - 169.254.0.0/16
+                    - 100.64.0.0/10
           # Vault access (uncomment if using HashiCorp Vault for secrets)
           # - to:
           #     - namespaceSelector:

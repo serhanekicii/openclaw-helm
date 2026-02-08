@@ -9,6 +9,10 @@ on:
         description: "OpenClaw version (e.g., 2026.1.30). Leave empty to fetch latest."
         required: false
         type: string
+      chromium_version:
+        description: "Chromium image tag (e.g., 124). Leave empty to skip chromium update."
+        required: false
+        type: string
       chart_bump:
         description: "Chart version bump type"
         required: true
@@ -52,19 +56,35 @@ jobs:
         run: |
           chart_version=$(grep '^version:' charts/openclaw/Chart.yaml | awk '{print $2}')
           app_version=$(grep '^appVersion:' charts/openclaw/Chart.yaml | awk '{print $2}' | tr -d '"')
+          chromium_version=$(grep 'chromiumVersion:' charts/openclaw/values.yaml | awk '{print $2}' | tr -d '"')
           echo "chart_version=$chart_version" >> "$GITHUB_OUTPUT"
           echo "app_version=$app_version" >> "$GITHUB_OUTPUT"
+          echo "chromium_version=$chromium_version" >> "$GITHUB_OUTPUT"
           echo "Current chart version: $chart_version"
           echo "Current app version: $app_version"
+          echo "Current chromium version: $chromium_version"
 
       - name: Check if update needed
         id: check
         run: |
-          if [ "${{ steps.get-version.outputs.version }}" = "${{ steps.current.outputs.app_version }}" ]; then
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "Already on latest version, skipping."
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
+          skip=true
+          openclaw_changed=false
+          chromium_changed=false
+          if [ "${{ steps.get-version.outputs.version }}" != "${{ steps.current.outputs.app_version }}" ]; then
+            skip=false
+            openclaw_changed=true
+            echo "OpenClaw version changed"
+          fi
+          if [ -n "${{ inputs.chromium_version }}" ] && [ "${{ inputs.chromium_version }}" != "${{ steps.current.outputs.chromium_version }}" ]; then
+            skip=false
+            chromium_changed=true
+            echo "Chromium version changed"
+          fi
+          echo "skip=$skip" >> "$GITHUB_OUTPUT"
+          echo "openclaw_changed=$openclaw_changed" >> "$GITHUB_OUTPUT"
+          echo "chromium_changed=$chromium_changed" >> "$GITHUB_OUTPUT"
+          if [ "$skip" = "true" ]; then
+            echo "Already on latest versions, skipping."
           fi
 
       - name: Calculate new chart version
@@ -101,20 +121,39 @@ jobs:
         if: steps.check.outputs.skip != 'true'
         uses: mikefarah/yq@v4
 
-      - name: Update Chart.yaml
+      - name: Update Chart.yaml version
         if: steps.check.outputs.skip != 'true'
         run: |
           yq -i '.version = "${{ steps.new-version.outputs.new_version }}"' charts/openclaw/Chart.yaml
-          yq -i '.appVersion = "${{ steps.get-version.outputs.version }}"' charts/openclaw/Chart.yaml
+          if [ "${{ steps.check.outputs.openclaw_changed }}" = "true" ]; then
+            yq -i '.appVersion = "${{ steps.get-version.outputs.version }}"' charts/openclaw/Chart.yaml
+          fi
 
-      - name: Update values.yaml
-        if: steps.check.outputs.skip != 'true'
+      - name: Update OpenClaw version in values.yaml
+        if: steps.check.outputs.skip != 'true' && steps.check.outputs.openclaw_changed == 'true'
         run: |
           version="${{ steps.get-version.outputs.version }}"
           old_version="${{ steps.current.outputs.app_version }}"
-          # Use sed for surgical replacement - preserves file formatting
-          # Only replaces the exact old version with new version in tag lines
-          sed -i "s/tag: \"${old_version}\"/tag: \"${version}\"/g" charts/openclaw/values.yaml
+          # Update the single openclawVersion value (all containers reference it via tpl)
+          sed -i "s/openclawVersion: \"${old_version}\"/openclawVersion: \"${version}\"/" charts/openclaw/values.yaml
+
+      - name: Update ArtifactHub image annotations
+        if: steps.check.outputs.skip != 'true' && steps.check.outputs.openclaw_changed == 'true'
+        run: |
+          version="${{ steps.get-version.outputs.version }}"
+          old_version="${{ steps.current.outputs.app_version }}"
+          sed -i "s|ghcr.io/openclaw/openclaw:${old_version}|ghcr.io/openclaw/openclaw:${version}|g" charts/openclaw/Chart.yaml
+
+      - name: Update chromium version
+        if: steps.check.outputs.skip != 'true' && inputs.chromium_version != ''
+        run: |
+          new_chromium="${{ inputs.chromium_version }}"
+          old_chromium="${{ steps.current.outputs.chromium_version }}"
+          if [ "$new_chromium" != "$old_chromium" ]; then
+            sed -i "s/chromiumVersion: \"${old_chromium}\"/chromiumVersion: \"${new_chromium}\"/" charts/openclaw/values.yaml
+            sed -i "s|zenika/alpine-chrome:${old_chromium}|zenika/alpine-chrome:${new_chromium}|g" charts/openclaw/Chart.yaml
+            echo "Updated chromium: ${old_chromium} -> ${new_chromium}"
+          fi
 
       - name: Install helm-docs
         if: steps.check.outputs.skip != 'true'
@@ -139,7 +178,18 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add charts/openclaw/Chart.yaml charts/openclaw/values.yaml charts/openclaw/README.md
-          git commit -m "chore: bump openclaw to ${{ steps.get-version.outputs.version }}"
+          parts=""
+          if [ "${{ steps.check.outputs.openclaw_changed }}" = "true" ]; then
+            parts="openclaw to ${{ steps.get-version.outputs.version }}"
+          fi
+          if [ "${{ steps.check.outputs.chromium_changed }}" = "true" ]; then
+            if [ -n "$parts" ]; then
+              parts="$parts, chromium to ${{ inputs.chromium_version }}"
+            else
+              parts="chromium to ${{ inputs.chromium_version }}"
+            fi
+          fi
+          git commit -m "chore: bump $parts"
           git push
 
       - name: Set up Helm
@@ -185,3 +235,6 @@ jobs:
           echo "::notice::Dry run - no changes committed"
           echo "Would bump OpenClaw to ${{ steps.get-version.outputs.version }}"
           echo "Would bump chart version to ${{ steps.new-version.outputs.new_version }}"
+          if [ -n "${{ inputs.chromium_version }}" ]; then
+            echo "Would bump chromium to ${{ inputs.chromium_version }}"
+          fi

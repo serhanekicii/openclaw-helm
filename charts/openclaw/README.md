@@ -4,7 +4,7 @@
 [![Helm 3](https://img.shields.io/badge/Helm-3.0+-0f1689?logo=helm&logoColor=white)](https://helm.sh/)
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-1.26+-326ce5?logo=kubernetes&logoColor=white)](https://kubernetes.io/)
 [![App Version](https://img.shields.io/badge/App_Version-2026.2.6-blue)](https://github.com/openclaw/openclaw)
-[![Chart Version](https://img.shields.io/badge/Chart_Version-1.3.5-blue)](https://github.com/serhanekicii/openclaw-helm)
+[![Chart Version](https://img.shields.io/badge/Chart_Version-1.3.7-blue)](https://github.com/serhanekicii/openclaw-helm)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 Helm chart for deploying OpenClaw on Kubernetes — an AI assistant that connects to messaging platforms and executes tasks autonomously.
@@ -20,7 +20,7 @@ OpenClaw runs as a single-instance deployment (cannot scale horizontally):
 | Component | Port | Description |
 |-----------|------|-------------|
 | Gateway | 18789 | Main HTTP/WebSocket interface |
-| Chromium | 9222 | Headless browser for automation (CDP) |
+| Chromium | 9222 | Headless browser for automation (CDP, optional) |
 
 **App Version:** 2026.2.6
 
@@ -145,36 +145,36 @@ All values are nested under `app-template:`. See [values.yaml](values.yaml) for 
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| app-template.configMaps.config.data."openclaw.json" | string | `"{\n  // Gateway configuration\n  \"gateway\": {\n    \"port\": 18789,\n    \"mode\": \"local\",\n    // IMPORTANT: trustedProxies uses exact IP matching only\n    // - CIDR notation is NOT supported - list each proxy IP individually\n    // - IPv6 exact addresses may work but are untested\n    // - Recommend single-stack IPv4 deployments for simplicity\n    \"trustedProxies\": [\"10.0.0.1\"]\n  },\n\n  // Browser configuration (Chromium sidecar)\n  \"browser\": {\n    \"enabled\": true,\n    \"defaultProfile\": \"default\",\n    \"profiles\": {\n      \"default\": {\n        \"cdpUrl\": \"http://localhost:9222\",\n        \"color\": \"#4285F4\"\n      }\n    }\n  },\n\n  // Agent configuration\n  \"agents\": {\n    \"defaults\": {\n      \"workspace\": \"/home/node/.openclaw/workspace\",\n      \"model\": {\n        // Uses OPENAI_API_KEY from environment\n        \"primary\": \"openai/gpt-4o\"\n      },\n      \"userTimezone\": \"UTC\",\n      \"timeoutSeconds\": 600,\n      \"maxConcurrent\": 1\n    },\n    \"list\": [\n      {\n        \"id\": \"main\",\n        \"default\": true,\n        \"identity\": {\n          \"name\": \"OpenClaw\",\n          \"emoji\": \"🦞\"\n        }\n      }\n    ]\n  },\n\n  // Session management\n  \"session\": {\n    \"scope\": \"per-sender\",\n    \"store\": \"/home/node/.openclaw/sessions\",\n    \"reset\": {\n      \"mode\": \"idle\",\n      \"idleMinutes\": 60\n    }\n  },\n\n  // Logging\n  \"logging\": {\n    \"level\": \"info\",\n    \"consoleLevel\": \"info\",\n    \"consoleStyle\": \"compact\",\n    \"redactSensitive\": \"tools\"\n  },\n\n  // Tools configuration\n  \"tools\": {\n    \"profile\": \"full\",\n    \"web\": {\n      \"search\": {\n        \"enabled\": false\n      },\n      \"fetch\": {\n        \"enabled\": true\n      }\n    }\n  }\n\n  // Channel configuration can be added here:\n  // \"channels\": {\n  //   \"telegram\": {\n  //     \"botToken\": \"${TELEGRAM_BOT_TOKEN}\",\n  //     \"enabled\": true\n  //   },\n  //   \"discord\": {\n  //     \"token\": \"${DISCORD_BOT_TOKEN}\"\n  //   },\n  //   \"slack\": {\n  //     \"botToken\": \"${SLACK_BOT_TOKEN}\",\n  //     \"appToken\": \"${SLACK_APP_TOKEN}\"\n  //   }\n  // }\n}\n"` |  |
+| app-template.chromiumVersion | string | `"124"` | Chromium sidecar image version |
+| app-template.configMaps.config.data."openclaw.json" | string | `"{\n  // Gateway configuration\n  \"gateway\": {\n    \"port\": 18789,\n    \"mode\": \"local\",\n    // IMPORTANT: trustedProxies uses exact IP matching only\n    // - CIDR notation is NOT supported - list each proxy IP individually\n    // - IPv6 exact addresses may work but are untested\n    // - Recommend single-stack IPv4 deployments for simplicity\n    \"trustedProxies\": [\"10.0.0.1\"]\n  },\n\n  // Browser configuration (Chromium sidecar)\n  \"browser\": {\n    \"enabled\": true,\n    \"defaultProfile\": \"default\",\n    \"profiles\": {\n      \"default\": {\n        \"cdpUrl\": \"http://localhost:9222\",\n        \"color\": \"#4285F4\"\n      }\n    }\n  },\n\n  // Agent configuration\n  \"agents\": {\n    \"defaults\": {\n      \"workspace\": \"/home/node/.openclaw/workspace\",\n      \"model\": {\n        // Uses ANTHROPIC_API_KEY from environment\n        \"primary\": \"anthropic/claude-opus-4-6\"\n      },\n      \"userTimezone\": \"UTC\",\n      \"timeoutSeconds\": 600,\n      \"maxConcurrent\": 1\n    },\n    \"list\": [\n      {\n        \"id\": \"main\",\n        \"default\": true,\n        \"identity\": {\n          \"name\": \"OpenClaw\",\n          \"emoji\": \"🦞\"\n        }\n      }\n    ]\n  },\n\n  // Session management\n  \"session\": {\n    \"scope\": \"per-sender\",\n    \"store\": \"/home/node/.openclaw/sessions\",\n    \"reset\": {\n      \"mode\": \"idle\",\n      \"idleMinutes\": 60\n    }\n  },\n\n  // Logging\n  \"logging\": {\n    \"level\": \"info\",\n    \"consoleLevel\": \"info\",\n    \"consoleStyle\": \"compact\",\n    \"redactSensitive\": \"tools\"\n  },\n\n  // Tools configuration\n  \"tools\": {\n    \"profile\": \"full\",\n    \"web\": {\n      \"search\": {\n        \"enabled\": false\n      },\n      \"fetch\": {\n        \"enabled\": true\n      }\n    }\n  }\n\n  // Channel configuration can be added here:\n  // \"channels\": {\n  //   \"telegram\": {\n  //     \"botToken\": \"${TELEGRAM_BOT_TOKEN}\",\n  //     \"enabled\": true\n  //   },\n  //   \"discord\": {\n  //     \"token\": \"${DISCORD_BOT_TOKEN}\"\n  //   },\n  //   \"slack\": {\n  //     \"botToken\": \"${SLACK_BOT_TOKEN}\",\n  //     \"appToken\": \"${SLACK_APP_TOKEN}\"\n  //   }\n  // }\n}\n"` |  |
 | app-template.configMaps.config.enabled | bool | `true` |  |
 | app-template.configMode | string | `"merge"` | Config mode: `merge` preserves runtime changes, `overwrite` for strict GitOps |
-| app-template.controllers.main.containers.chromium | object | `{"args":["--headless","--disable-gpu","--no-sandbox","--disable-dev-shm-usage","--remote-debugging-address=0.0.0.0","--remote-debugging-port=9222"],"command":["chromium-browser"],"image":{"repository":"zenika/alpine-chrome","tag":"124"},"probes":{"readiness":{"enabled":true,"spec":{"initialDelaySeconds":5,"periodSeconds":10,"tcpSocket":{"port":9222}},"type":"TCP"}},"resources":{"limits":{"cpu":"1000m","memory":"1Gi"},"requests":{"cpu":"100m","memory":"256Mi"}},"securityContext":{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"runAsGroup":1000,"runAsNonRoot":true,"runAsUser":1000}}` | Chromium sidecar for browser automation (CDP on port 9222) |
+| app-template.controllers.main.containers.chromium | object | `{"args":["--headless","--disable-gpu","--no-sandbox","--disable-dev-shm-usage","--remote-debugging-address=0.0.0.0","--remote-debugging-port=9222","--user-data-dir=/tmp/chromium"],"command":["chromium-browser"],"enabled":true,"image":{"repository":"zenika/alpine-chrome","tag":"{{ .Values.chromiumVersion }}"},"probes":{"liveness":{"custom":true,"enabled":true,"spec":{"failureThreshold":6,"initialDelaySeconds":10,"periodSeconds":30,"tcpSocket":{"port":9222},"timeoutSeconds":5}},"readiness":{"custom":true,"enabled":true,"spec":{"initialDelaySeconds":5,"periodSeconds":10,"tcpSocket":{"port":9222}}},"startup":{"custom":true,"enabled":true,"spec":{"failureThreshold":12,"initialDelaySeconds":5,"periodSeconds":5,"tcpSocket":{"port":9222},"timeoutSeconds":5}}},"resources":{"limits":{"cpu":"1000m","memory":"1Gi"},"requests":{"cpu":"100m","memory":"256Mi"}},"securityContext":{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"readOnlyRootFilesystem":true,"runAsGroup":1000,"runAsNonRoot":true,"runAsUser":1000}}` | Chromium sidecar for browser automation (CDP on port 9222) |
+| app-template.controllers.main.containers.chromium.enabled | bool | `true` | Enable/disable the Chromium browser sidecar |
 | app-template.controllers.main.containers.chromium.image.repository | string | `"zenika/alpine-chrome"` | Chromium image repository |
-| app-template.controllers.main.containers.chromium.image.tag | string | `"124"` | Chromium image tag |
-| app-template.controllers.main.containers.main | object | `{"args":["gateway","--bind","lan","--port","18789"],"command":["node","dist/index.js"],"env":{},"envFrom":[],"image":{"pullPolicy":"IfNotPresent","repository":"ghcr.io/openclaw/openclaw","tag":"2026.2.6"},"probes":{"liveness":{"enabled":true,"spec":{"failureThreshold":3,"initialDelaySeconds":30,"periodSeconds":30,"tcpSocket":{"port":18789},"timeoutSeconds":5},"type":"TCP"},"readiness":{"enabled":true,"spec":{"failureThreshold":3,"initialDelaySeconds":10,"periodSeconds":10,"tcpSocket":{"port":18789},"timeoutSeconds":5},"type":"TCP"},"startup":{"enabled":true,"spec":{"failureThreshold":30,"initialDelaySeconds":5,"periodSeconds":5,"tcpSocket":{"port":18789},"timeoutSeconds":5},"type":"TCP"}},"resources":{"limits":{"cpu":"2000m","memory":"2Gi"},"requests":{"cpu":"200m","memory":"512Mi"}},"securityContext":{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"runAsGroup":1000,"runAsNonRoot":true,"runAsUser":1000}}` | Main OpenClaw container |
+| app-template.controllers.main.containers.chromium.image.tag | string | `"{{ .Values.chromiumVersion }}"` | Chromium image tag |
+| app-template.controllers.main.containers.main | object | `{"args":["gateway","--bind","lan","--port","18789"],"command":["node","dist/index.js"],"env":{},"envFrom":[],"image":{"pullPolicy":"IfNotPresent","repository":"ghcr.io/openclaw/openclaw","tag":"{{ .Values.openclawVersion }}"},"probes":{"liveness":{"enabled":true,"spec":{"failureThreshold":3,"initialDelaySeconds":30,"periodSeconds":30,"tcpSocket":{"port":18789},"timeoutSeconds":5},"type":"TCP"},"readiness":{"enabled":true,"spec":{"failureThreshold":3,"initialDelaySeconds":10,"periodSeconds":10,"tcpSocket":{"port":18789},"timeoutSeconds":5},"type":"TCP"},"startup":{"enabled":true,"spec":{"failureThreshold":30,"initialDelaySeconds":5,"periodSeconds":5,"tcpSocket":{"port":18789},"timeoutSeconds":5},"type":"TCP"}},"resources":{"limits":{"cpu":"2000m","memory":"2Gi"},"requests":{"cpu":"200m","memory":"512Mi"}},"securityContext":{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"readOnlyRootFilesystem":true,"runAsGroup":1000,"runAsNonRoot":true,"runAsUser":1000}}` | Main OpenClaw container |
 | app-template.controllers.main.containers.main.image.pullPolicy | string | `"IfNotPresent"` | Image pull policy |
 | app-template.controllers.main.containers.main.image.repository | string | `"ghcr.io/openclaw/openclaw"` | Container image repository |
-| app-template.controllers.main.containers.main.image.tag | string | `"2026.2.6"` | Container image tag |
+| app-template.controllers.main.containers.main.image.tag | string | `"{{ .Values.openclawVersion }}"` | Container image tag |
 | app-template.controllers.main.containers.main.resources | object | `{"limits":{"cpu":"2000m","memory":"2Gi"},"requests":{"cpu":"200m","memory":"512Mi"}}` | Resource requests and limits |
-| app-template.controllers.main.initContainers.init-config.command[0] | string | `"sh"` |  |
-| app-template.controllers.main.initContainers.init-config.command[1] | string | `"-c"` |  |
-| app-template.controllers.main.initContainers.init-config.command[2] | string | `"log() { echo \"[$(date -Iseconds)] [init-config] $*\"; }\n\nlog \"Starting config initialization\"\nmkdir -p /home/node/.openclaw\nCONFIG_MODE=\"${CONFIG_MODE:-merge}\"\n\nif [ \"$CONFIG_MODE\" = \"merge\" ] && [ -f /home/node/.openclaw/openclaw.json ]; then\n  log \"Mode: merge - merging Helm config with existing config\"\n  node -e \"\n    const fs = require('fs');\n    // Strip JSON5 single-line comments while preserving // inside strings (e.g. URLs)\n    const stripComments = (s) => {\n      let r = '', q = false, i = 0;\n      while (i < s.length) {\n        if (q) {\n          if (s[i] === '\\\\\\\\') { r += s[i] + s[i+1]; i += 2; continue; }\n          if (s[i] === '\\\"') q = false;\n          r += s[i++];\n        } else if (s[i] === '\\\"') {\n          q = true; r += s[i++];\n        } else if (s[i] === '/' && s[i+1] === '/') {\n          while (i < s.length && s[i] !== '\\n') i++;\n        } else { r += s[i++]; }\n      }\n      return r;\n    };\n    const existing = JSON.parse(stripComments(fs.readFileSync('/home/node/.openclaw/openclaw.json', 'utf8')));\n    const helm = JSON.parse(stripComments(fs.readFileSync('/config/openclaw.json', 'utf8')));\n    const deepMerge = (target, source) => {\n      for (const key of Object.keys(source)) {\n        if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {\n          target[key] = target[key] || {};\n          deepMerge(target[key], source[key]);\n        } else {\n          target[key] = source[key];\n        }\n      }\n      return target;\n    };\n    const merged = deepMerge(existing, helm);\n    fs.writeFileSync('/home/node/.openclaw/openclaw.json', JSON.stringify(merged, null, 2));\n  \"\n  log \"Config merged successfully\"\nelse\n  log \"Mode: overwrite - copying Helm config (fresh install or overwrite mode)\"\n  cp /config/openclaw.json /home/node/.openclaw/openclaw.json\nfi\nchown -R 1000:1000 /home/node/.openclaw\nlog \"Config initialization complete\"\n"` |  |
+| app-template.controllers.main.initContainers.init-config.command | list | See values.yaml | Init-config startup script |
 | app-template.controllers.main.initContainers.init-config.env.CONFIG_MODE | string | `"{{ .Values.configMode | default \"merge\" }}"` |  |
 | app-template.controllers.main.initContainers.init-config.image.repository | string | `"ghcr.io/openclaw/openclaw"` |  |
-| app-template.controllers.main.initContainers.init-config.image.tag | string | `"2026.2.6"` |  |
+| app-template.controllers.main.initContainers.init-config.image.tag | string | `"{{ .Values.openclawVersion }}"` |  |
 | app-template.controllers.main.initContainers.init-config.securityContext.allowPrivilegeEscalation | bool | `false` |  |
-| app-template.controllers.main.initContainers.init-config.securityContext.capabilities.add[0] | string | `"CHOWN"` |  |
-| app-template.controllers.main.initContainers.init-config.securityContext.capabilities.add[1] | string | `"DAC_OVERRIDE"` |  |
-| app-template.controllers.main.initContainers.init-config.securityContext.capabilities.add[2] | string | `"FOWNER"` |  |
 | app-template.controllers.main.initContainers.init-config.securityContext.capabilities.drop[0] | string | `"ALL"` |  |
-| app-template.controllers.main.initContainers.init-config.securityContext.runAsUser | int | `0` |  |
-| app-template.controllers.main.initContainers.init-skills.command[0] | string | `"sh"` |  |
-| app-template.controllers.main.initContainers.init-skills.command[1] | string | `"-c"` |  |
-| app-template.controllers.main.initContainers.init-skills.command[2] | string | `"log() { echo \"[$(date -Iseconds)] [init-skills] $*\"; }\n\nlog \"Starting skills initialization\"\n\n# ============================================================\n# Runtime Dependencies\n# ============================================================\n# Some skills require additional runtimes (Python, Go, etc.)\n# Install them here so they persist across pod restarts.\n#\n# Example: Install uv (Python package manager) for Python skills\n# mkdir -p /home/node/.openclaw/bin\n# if [ ! -f /home/node/.openclaw/bin/uv ]; then\n#   log \"Installing uv...\"\n#   curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/home/node/.openclaw/bin sh\n# fi\n\n# ============================================================\n# Skill Installation\n# ============================================================\n# Install skills from ClawHub (https://clawhub.com)\n# Add skill slugs to the list below to install them declaratively.\ncd /home/node/.openclaw/workspace\nmkdir -p skills\nfor skill in weather; do\n  if [ -n \"$skill\" ] && [ ! -d \"skills/${skill##*/}\" ]; then\n    log \"Installing skill: $skill\"\n    npx -y clawhub install \"$skill\" --no-input || true\n  else\n    log \"Skill already installed: $skill\"\n  fi\ndone\nlog \"Skills initialization complete\"\n"` |  |
-| app-template.controllers.main.initContainers.init-skills.image.repository | string | `"node"` |  |
-| app-template.controllers.main.initContainers.init-skills.image.tag | string | `"22"` |  |
+| app-template.controllers.main.initContainers.init-config.securityContext.readOnlyRootFilesystem | bool | `true` |  |
+| app-template.controllers.main.initContainers.init-config.securityContext.runAsGroup | int | `1000` |  |
+| app-template.controllers.main.initContainers.init-config.securityContext.runAsNonRoot | bool | `true` |  |
+| app-template.controllers.main.initContainers.init-config.securityContext.runAsUser | int | `1000` |  |
+| app-template.controllers.main.initContainers.init-skills.command | list | See values.yaml | Init-skills startup script |
+| app-template.controllers.main.initContainers.init-skills.env.NPM_CONFIG_CACHE | string | `"/tmp/.npm"` |  |
+| app-template.controllers.main.initContainers.init-skills.image.repository | string | `"ghcr.io/openclaw/openclaw"` |  |
+| app-template.controllers.main.initContainers.init-skills.image.tag | string | `"{{ .Values.openclawVersion }}"` |  |
 | app-template.controllers.main.initContainers.init-skills.securityContext.allowPrivilegeEscalation | bool | `false` |  |
 | app-template.controllers.main.initContainers.init-skills.securityContext.capabilities.drop[0] | string | `"ALL"` |  |
+| app-template.controllers.main.initContainers.init-skills.securityContext.readOnlyRootFilesystem | bool | `true` |  |
 | app-template.controllers.main.initContainers.init-skills.securityContext.runAsGroup | int | `1000` |  |
 | app-template.controllers.main.initContainers.init-skills.securityContext.runAsNonRoot | bool | `true` |  |
 | app-template.controllers.main.initContainers.init-skills.securityContext.runAsUser | int | `1000` |  |
@@ -196,9 +196,12 @@ All values are nested under `app-template:`. See [values.yaml](values.yaml) for 
 | app-template.networkpolicies.main.rules.egress[1].to[0].ipBlock.except[0] | string | `"10.0.0.0/8"` |  |
 | app-template.networkpolicies.main.rules.egress[1].to[0].ipBlock.except[1] | string | `"172.16.0.0/12"` |  |
 | app-template.networkpolicies.main.rules.egress[1].to[0].ipBlock.except[2] | string | `"192.168.0.0/16"` |  |
+| app-template.networkpolicies.main.rules.egress[1].to[0].ipBlock.except[3] | string | `"169.254.0.0/16"` |  |
+| app-template.networkpolicies.main.rules.egress[1].to[0].ipBlock.except[4] | string | `"100.64.0.0/10"` |  |
 | app-template.networkpolicies.main.rules.ingress[0].from[0].namespaceSelector.matchLabels."kubernetes.io/metadata.name" | string | `"gateway-system"` |  |
 | app-template.networkpolicies.main.rules.ingress[0].ports[0].port | int | `18789` |  |
 | app-template.networkpolicies.main.rules.ingress[0].ports[0].protocol | string | `"TCP"` |  |
+| app-template.openclawVersion | string | `"2026.2.6"` | OpenClaw image version (used by all OpenClaw containers) |
 | app-template.persistence.config.advancedMounts.main.init-config[0].path | string | `"/config"` |  |
 | app-template.persistence.config.advancedMounts.main.init-config[0].readOnly | bool | `true` |  |
 | app-template.persistence.config.enabled | bool | `true` |  |
@@ -211,6 +214,12 @@ All values are nested under `app-template:`. See [values.yaml](values.yaml) for 
 | app-template.persistence.data.enabled | bool | `true` |  |
 | app-template.persistence.data.size | string | `"5Gi"` |  |
 | app-template.persistence.data.type | string | `"persistentVolumeClaim"` |  |
+| app-template.persistence.tmp.advancedMounts.main.chromium[0].path | string | `"/tmp"` |  |
+| app-template.persistence.tmp.advancedMounts.main.init-config[0].path | string | `"/tmp"` |  |
+| app-template.persistence.tmp.advancedMounts.main.init-skills[0].path | string | `"/tmp"` |  |
+| app-template.persistence.tmp.advancedMounts.main.main[0].path | string | `"/tmp"` |  |
+| app-template.persistence.tmp.enabled | bool | `true` |  |
+| app-template.persistence.tmp.type | string | `"emptyDir"` |  |
 | app-template.service.main.controller | string | `"main"` |  |
 | app-template.service.main.ipFamilies[0] | string | `"IPv4"` |  |
 | app-template.service.main.ipFamilyPolicy | string | `"SingleStack"` |  |
@@ -370,7 +379,9 @@ app-template:
             - |
               cd /home/node/.openclaw/workspace && mkdir -p skills
               for skill in weather; do
-                npx -y clawhub install "$skill" --no-input || true
+                if ! npx -y clawhub install "$skill" --no-input; then
+                  echo "WARNING: Failed to install skill: $skill"
+                fi
               done
 ```
 
