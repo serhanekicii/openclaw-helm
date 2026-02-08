@@ -2,6 +2,7 @@
 
 {{ template "chart.deprecationWarning" . }}
 
+[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/openclaw-helm)](https://artifacthub.io/packages/search?repo=openclaw-helm)
 [![Helm 3](https://img.shields.io/badge/Helm-3.0+-0f1689?logo=helm&logoColor=white)](https://helm.sh/)
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-1.26+-326ce5?logo=kubernetes&logoColor=white)](https://kubernetes.io/)
 [![App Version](https://img.shields.io/badge/App_Version-{{ .AppVersion }}-blue)]({{ .Home }})
@@ -156,7 +157,8 @@ The `configMode` setting controls how Helm-managed config merges with runtime ch
 | `overwrite` | Helm values completely replace existing config. Use for strict GitOps where config should match values.yaml exactly. |
 
 ```yaml
-configMode: overwrite  # or "merge" (default)
+app-template:
+  configMode: overwrite  # or "merge" (default)
 ```
 
 <details>

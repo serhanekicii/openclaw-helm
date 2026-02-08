@@ -1,5 +1,6 @@
 # 🦞 OpenClaw Helm Chart
 
+[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/openclaw-helm)](https://artifacthub.io/packages/search?repo=openclaw-helm)
 [![Helm 3](https://img.shields.io/badge/Helm-3.0+-0f1689?logo=helm&logoColor=white)](https://helm.sh/)
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-1.26+-326ce5?logo=kubernetes&logoColor=white)](https://kubernetes.io/)
 [![App Version](https://img.shields.io/badge/App_Version-2026.2.6-blue)](https://github.com/openclaw/openclaw)
@@ -146,6 +147,7 @@ All values are nested under `app-template:`. See [values.yaml](values.yaml) for 
 |-----|------|---------|-------------|
 | app-template.configMaps.config.data."openclaw.json" | string | `"{\n  // Gateway configuration\n  \"gateway\": {\n    \"port\": 18789,\n    \"mode\": \"local\",\n    // IMPORTANT: trustedProxies uses exact IP matching only\n    // - CIDR notation is NOT supported - list each proxy IP individually\n    // - IPv6 exact addresses may work but are untested\n    // - Recommend single-stack IPv4 deployments for simplicity\n    \"trustedProxies\": [\"10.0.0.1\"]\n  },\n\n  // Browser configuration (Chromium sidecar)\n  \"browser\": {\n    \"enabled\": true,\n    \"defaultProfile\": \"default\",\n    \"profiles\": {\n      \"default\": {\n        \"cdpUrl\": \"http://localhost:9222\",\n        \"color\": \"#4285F4\"\n      }\n    }\n  },\n\n  // Agent configuration\n  \"agents\": {\n    \"defaults\": {\n      \"workspace\": \"/home/node/.openclaw/workspace\",\n      \"model\": {\n        // Uses OPENAI_API_KEY from environment\n        \"primary\": \"openai/gpt-4o\"\n      },\n      \"userTimezone\": \"UTC\",\n      \"timeoutSeconds\": 600,\n      \"maxConcurrent\": 1\n    },\n    \"list\": [\n      {\n        \"id\": \"main\",\n        \"default\": true,\n        \"identity\": {\n          \"name\": \"OpenClaw\",\n          \"emoji\": \"🦞\"\n        }\n      }\n    ]\n  },\n\n  // Session management\n  \"session\": {\n    \"scope\": \"per-sender\",\n    \"store\": \"/home/node/.openclaw/sessions\",\n    \"reset\": {\n      \"mode\": \"idle\",\n      \"idleMinutes\": 60\n    }\n  },\n\n  // Logging\n  \"logging\": {\n    \"level\": \"info\",\n    \"consoleLevel\": \"info\",\n    \"consoleStyle\": \"compact\",\n    \"redactSensitive\": \"tools\"\n  },\n\n  // Tools configuration\n  \"tools\": {\n    \"profile\": \"full\",\n    \"web\": {\n      \"search\": {\n        \"enabled\": false\n      },\n      \"fetch\": {\n        \"enabled\": true\n      }\n    }\n  }\n\n  // Channel configuration can be added here:\n  // \"channels\": {\n  //   \"telegram\": {\n  //     \"botToken\": \"${TELEGRAM_BOT_TOKEN}\",\n  //     \"enabled\": true\n  //   },\n  //   \"discord\": {\n  //     \"token\": \"${DISCORD_BOT_TOKEN}\"\n  //   },\n  //   \"slack\": {\n  //     \"botToken\": \"${SLACK_BOT_TOKEN}\",\n  //     \"appToken\": \"${SLACK_APP_TOKEN}\"\n  //   }\n  // }\n}\n"` |  |
 | app-template.configMaps.config.enabled | bool | `true` |  |
+| app-template.configMode | string | `"merge"` | Config mode: `merge` preserves runtime changes, `overwrite` for strict GitOps |
 | app-template.controllers.main.containers.chromium | object | `{"args":["--headless","--disable-gpu","--no-sandbox","--disable-dev-shm-usage","--remote-debugging-address=0.0.0.0","--remote-debugging-port=9222"],"command":["chromium-browser"],"image":{"repository":"zenika/alpine-chrome","tag":"124"},"probes":{"readiness":{"enabled":true,"spec":{"initialDelaySeconds":5,"periodSeconds":10,"tcpSocket":{"port":9222}},"type":"TCP"}},"resources":{"limits":{"cpu":"1000m","memory":"1Gi"},"requests":{"cpu":"100m","memory":"256Mi"}},"securityContext":{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"runAsGroup":1000,"runAsNonRoot":true,"runAsUser":1000}}` | Chromium sidecar for browser automation (CDP on port 9222) |
 | app-template.controllers.main.containers.chromium.image.repository | string | `"zenika/alpine-chrome"` | Chromium image repository |
 | app-template.controllers.main.containers.chromium.image.tag | string | `"124"` | Chromium image tag |
@@ -156,9 +158,8 @@ All values are nested under `app-template:`. See [values.yaml](values.yaml) for 
 | app-template.controllers.main.containers.main.resources | object | `{"limits":{"cpu":"2000m","memory":"2Gi"},"requests":{"cpu":"200m","memory":"512Mi"}}` | Resource requests and limits |
 | app-template.controllers.main.initContainers.init-config.command[0] | string | `"sh"` |  |
 | app-template.controllers.main.initContainers.init-config.command[1] | string | `"-c"` |  |
-| app-template.controllers.main.initContainers.init-config.command[2] | string | `"log() { echo \"[$(date -Iseconds)] [init-config] $*\"; }\n\nlog \"Starting config initialization\"\nmkdir -p /home/node/.openclaw\nCONFIG_MODE=\"${CONFIG_MODE:-merge}\"\n\nif [ \"$CONFIG_MODE\" = \"merge\" ] && [ -f /home/node/.openclaw/openclaw.json ]; then\n  log \"Mode: merge - merging Helm config with existing config\"\n  node -e \"\n    const fs = require('fs');\n    const existing = JSON.parse(fs.readFileSync('/home/node/.openclaw/openclaw.json', 'utf8'));\n    const helm = JSON.parse(fs.readFileSync('/config/openclaw.json', 'utf8'));\n    const deepMerge = (target, source) => {\n      for (const key of Object.keys(source)) {\n        if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {\n          target[key] = target[key] || {};\n          deepMerge(target[key], source[key]);\n        } else {\n          target[key] = source[key];\n        }\n      }\n      return target;\n    };\n    const merged = deepMerge(existing, helm);\n    fs.writeFileSync('/home/node/.openclaw/openclaw.json', JSON.stringify(merged, null, 2));\n  \"\n  log \"Config merged successfully\"\nelse\n  log \"Mode: overwrite - copying Helm config (fresh install or overwrite mode)\"\n  cp /config/openclaw.json /home/node/.openclaw/openclaw.json\nfi\nchown -R 1000:1000 /home/node/.openclaw\nlog \"Config initialization complete\"\n"` |  |
-| app-template.controllers.main.initContainers.init-config.env[0].name | string | `"CONFIG_MODE"` |  |
-| app-template.controllers.main.initContainers.init-config.env[0].value | string | `"merge"` |  |
+| app-template.controllers.main.initContainers.init-config.command[2] | string | `"log() { echo \"[$(date -Iseconds)] [init-config] $*\"; }\n\nlog \"Starting config initialization\"\nmkdir -p /home/node/.openclaw\nCONFIG_MODE=\"${CONFIG_MODE:-merge}\"\n\nif [ \"$CONFIG_MODE\" = \"merge\" ] && [ -f /home/node/.openclaw/openclaw.json ]; then\n  log \"Mode: merge - merging Helm config with existing config\"\n  node -e \"\n    const fs = require('fs');\n    // Strip JSON5 single-line comments while preserving // inside strings (e.g. URLs)\n    const stripComments = (s) => {\n      let r = '', q = false, i = 0;\n      while (i < s.length) {\n        if (q) {\n          if (s[i] === '\\\\\\\\') { r += s[i] + s[i+1]; i += 2; continue; }\n          if (s[i] === '\\\"') q = false;\n          r += s[i++];\n        } else if (s[i] === '\\\"') {\n          q = true; r += s[i++];\n        } else if (s[i] === '/' && s[i+1] === '/') {\n          while (i < s.length && s[i] !== '\\n') i++;\n        } else { r += s[i++]; }\n      }\n      return r;\n    };\n    const existing = JSON.parse(stripComments(fs.readFileSync('/home/node/.openclaw/openclaw.json', 'utf8')));\n    const helm = JSON.parse(stripComments(fs.readFileSync('/config/openclaw.json', 'utf8')));\n    const deepMerge = (target, source) => {\n      for (const key of Object.keys(source)) {\n        if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {\n          target[key] = target[key] || {};\n          deepMerge(target[key], source[key]);\n        } else {\n          target[key] = source[key];\n        }\n      }\n      return target;\n    };\n    const merged = deepMerge(existing, helm);\n    fs.writeFileSync('/home/node/.openclaw/openclaw.json', JSON.stringify(merged, null, 2));\n  \"\n  log \"Config merged successfully\"\nelse\n  log \"Mode: overwrite - copying Helm config (fresh install or overwrite mode)\"\n  cp /config/openclaw.json /home/node/.openclaw/openclaw.json\nfi\nchown -R 1000:1000 /home/node/.openclaw\nlog \"Config initialization complete\"\n"` |  |
+| app-template.controllers.main.initContainers.init-config.env.CONFIG_MODE | string | `"{{ .Values.configMode | default \"merge\" }}"` |  |
 | app-template.controllers.main.initContainers.init-config.image.repository | string | `"ghcr.io/openclaw/openclaw"` |  |
 | app-template.controllers.main.initContainers.init-config.image.tag | string | `"2026.2.6"` |  |
 | app-template.controllers.main.initContainers.init-config.securityContext.allowPrivilegeEscalation | bool | `false` |  |
@@ -201,7 +202,7 @@ All values are nested under `app-template:`. See [values.yaml](values.yaml) for 
 | app-template.persistence.config.advancedMounts.main.init-config[0].path | string | `"/config"` |  |
 | app-template.persistence.config.advancedMounts.main.init-config[0].readOnly | bool | `true` |  |
 | app-template.persistence.config.enabled | bool | `true` |  |
-| app-template.persistence.config.name | string | `"openclaw"` |  |
+| app-template.persistence.config.identifier | string | `"config"` |  |
 | app-template.persistence.config.type | string | `"configMap"` |  |
 | app-template.persistence.data.accessMode | string | `"ReadWriteOnce"` |  |
 | app-template.persistence.data.advancedMounts.main.init-config[0].path | string | `"/home/node/.openclaw"` |  |
@@ -214,7 +215,6 @@ All values are nested under `app-template:`. See [values.yaml](values.yaml) for 
 | app-template.service.main.ipFamilies[0] | string | `"IPv4"` |  |
 | app-template.service.main.ipFamilyPolicy | string | `"SingleStack"` |  |
 | app-template.service.main.ports.http.port | int | `18789` |  |
-| configMode | string | `"merge"` | Config mode: `merge` preserves runtime changes, `overwrite` for strict GitOps |
 
 </details>
 
@@ -228,7 +228,8 @@ The `configMode` setting controls how Helm-managed config merges with runtime ch
 | `overwrite` | Helm values completely replace existing config. Use for strict GitOps where config should match values.yaml exactly. |
 
 ```yaml
-configMode: overwrite  # or "merge" (default)
+app-template:
+  configMode: overwrite  # or "merge" (default)
 ```
 
 <details>

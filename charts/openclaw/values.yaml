@@ -5,10 +5,10 @@
 # - Deploy as a SINGLE INSTANCE only
 # - Do NOT increase replica count
 #
-# -- Config mode: `merge` preserves runtime changes, `overwrite` for strict GitOps
-configMode: merge
-
 app-template:
+  # -- Config mode: `merge` preserves runtime changes, `overwrite` for strict GitOps
+  configMode: merge
+
   defaultPodOptions:
     # -- Pod security context
     securityContext:
@@ -44,8 +44,24 @@ app-template:
                 log "Mode: merge - merging Helm config with existing config"
                 node -e "
                   const fs = require('fs');
-                  const existing = JSON.parse(fs.readFileSync('/home/node/.openclaw/openclaw.json', 'utf8'));
-                  const helm = JSON.parse(fs.readFileSync('/config/openclaw.json', 'utf8'));
+                  // Strip JSON5 single-line comments while preserving // inside strings (e.g. URLs)
+                  const stripComments = (s) => {
+                    let r = '', q = false, i = 0;
+                    while (i < s.length) {
+                      if (q) {
+                        if (s[i] === '\\\\') { r += s[i] + s[i+1]; i += 2; continue; }
+                        if (s[i] === '\"') q = false;
+                        r += s[i++];
+                      } else if (s[i] === '\"') {
+                        q = true; r += s[i++];
+                      } else if (s[i] === '/' && s[i+1] === '/') {
+                        while (i < s.length && s[i] !== '\n') i++;
+                      } else { r += s[i++]; }
+                    }
+                    return r;
+                  };
+                  const existing = JSON.parse(stripComments(fs.readFileSync('/home/node/.openclaw/openclaw.json', 'utf8')));
+                  const helm = JSON.parse(stripComments(fs.readFileSync('/config/openclaw.json', 'utf8')));
                   const deepMerge = (target, source) => {
                     for (const key of Object.keys(source)) {
                       if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
@@ -68,8 +84,7 @@ app-template:
               chown -R 1000:1000 /home/node/.openclaw
               log "Config initialization complete"
           env:
-            - name: CONFIG_MODE
-              value: "merge"
+            CONFIG_MODE: "{{ .Values.configMode | default \"merge\" }}"
           securityContext:
             runAsUser: 0
             allowPrivilegeEscalation: false
@@ -394,7 +409,7 @@ app-template:
     config:
       enabled: true
       type: configMap
-      name: openclaw
+      identifier: config
       advancedMounts:
         main:
           init-config:
