@@ -155,6 +155,21 @@ jobs:
             echo "Updated chromium: ${old_chromium} -> ${new_chromium}"
           fi
 
+      - name: Update ArtifactHub changelog
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          changelog=""
+          if [ "${{ steps.check.outputs.openclaw_changed }}" = "true" ]; then
+            changelog="${changelog}    - kind: changed\n      description: \"Bump OpenClaw to ${{ steps.get-version.outputs.version }}\"\n"
+          fi
+          if [ "${{ steps.check.outputs.chromium_changed }}" = "true" ]; then
+            changelog="${changelog}    - kind: changed\n      description: \"Bump Chromium to ${{ inputs.chromium_version }}\"\n"
+          fi
+          if [ -n "$changelog" ]; then
+            printf "%b" "$changelog" > /tmp/changelog.yaml
+            yq -i '.annotations["artifacthub.io/changes"] = load_str("/tmp/changelog.yaml")' charts/openclaw/Chart.yaml
+          fi
+
       - name: Install helm-docs
         if: steps.check.outputs.skip != 'true'
         run: |
