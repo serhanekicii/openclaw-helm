@@ -10,6 +10,9 @@ concurrency:
   group: docs-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: write
+
 jobs:
   helm-docs:
     runs-on: ubuntu-24.04
@@ -30,10 +33,12 @@ jobs:
         run: |
           helm-docs --chart-search-root=charts
 
-      - name: Check for uncommitted changes
+      - name: Commit updated docs
         run: |
           if ! git diff --quiet charts/openclaw/README.md; then
-            echo "::error::README.md is out of date. Run 'helm-docs --chart-search-root=charts' locally and commit the changes."
-            git diff charts/openclaw/README.md
-            exit 1
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add charts/openclaw/README.md
+            git commit -m "chore: regenerate helm-docs"
+            git push
           fi
