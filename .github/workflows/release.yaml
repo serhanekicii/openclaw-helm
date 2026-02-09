@@ -110,7 +110,6 @@ jobs:
           helm-docs --chart-search-root=charts
 
       - name: Generate values schema
-        continue-on-error: true
         uses: losisin/helm-values-schema-json-action@v2
         with:
           values: charts/openclaw/values.yaml

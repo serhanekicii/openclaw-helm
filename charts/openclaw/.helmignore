@@ -1,0 +1,22 @@
+# VCS
+.git/
+.gitignore
+
+# Dev/build files
+README.md.gotmpl
+.schema.yaml
+
+# CI
+.github/
+ct.yaml
+
+# Editor
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
