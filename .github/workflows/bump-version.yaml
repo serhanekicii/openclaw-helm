@@ -263,7 +263,7 @@ jobs:
       - name: Push Charts to GHCR
         if: steps.check.outputs.skip != 'true' && inputs.dry_run != true
         run: |
-          for pkg in .cr-release-packages/*; do
+          for pkg in .cr-release-packages/*.tgz; do
             if [ -z "${pkg:-}" ]; then
               break
             fi

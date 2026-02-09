@@ -158,7 +158,7 @@ jobs:
       - name: Push Charts to GHCR
         if: steps.cr.outputs.changed_charts
         run: |
-          for pkg in .cr-release-packages/*; do
+          for pkg in .cr-release-packages/*.tgz; do
             if [ -z "${pkg:-}" ]; then
               break
             fi
