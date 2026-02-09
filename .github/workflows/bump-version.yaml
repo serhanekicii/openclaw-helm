@@ -186,6 +186,7 @@ jobs:
 
       - name: Generate values schema
         if: steps.check.outputs.skip != 'true'
+        continue-on-error: true
         uses: losisin/helm-values-schema-json-action@v2
         with:
           values: charts/openclaw/values.yaml

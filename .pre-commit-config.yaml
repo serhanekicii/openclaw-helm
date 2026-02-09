@@ -1,6 +1,6 @@
 repos:
   - repo: https://github.com/losisin/helm-values-schema-json
-    rev: v1.7.2
+    rev: v2.3.1
     hooks:
       - id: helm-schema
         name: Generate values.schema.json
