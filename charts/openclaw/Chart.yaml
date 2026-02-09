@@ -21,6 +21,9 @@ maintainers:
     url: https://serhanekici.com
 annotations:
   artifacthub.io/category: ai-machine-learning
+  artifacthub.io/signKey: |
+    fingerprint: 663862EB60C50E04AD73F198CA0FB121610B01FF
+    url: https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x663862EB60C50E04AD73F198CA0FB121610B01FF
   artifacthub.io/changes: |
     - kind: added
       description: "Add values.schema.json generation for ArtifactHub (#7)"
