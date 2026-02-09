@@ -233,6 +233,14 @@ jobs:
         run: |
           helm repo add bjw-s-labs https://bjw-s-labs.github.io/helm-charts/
 
+      - name: Prepare GPG keyring
+        if: steps.check.outputs.skip != 'true' && inputs.dry_run != true
+        run: |
+          mkdir -p .cr-gpg
+          base64 -d <<< "$GPG_KEYRING_BASE64" > .cr-gpg/secring.gpg
+        env:
+          GPG_KEYRING_BASE64: "${{ secrets.GPG_KEYRING_BASE64 }}"
+
       - name: Run chart-releaser
         if: steps.check.outputs.skip != 'true' && inputs.dry_run != true
         uses: helm/chart-releaser-action@v1.7.0
@@ -240,6 +248,9 @@ jobs:
           CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
           CR_GENERATE_RELEASE_NOTES: true
           CR_SKIP_EXISTING: true
+          CR_SIGN: true
+          CR_KEY: "openclaw-helm chart signing"
+          CR_KEYRING: .cr-gpg/secring.gpg
 
       - name: Login to GitHub Container Registry
         if: steps.check.outputs.skip != 'true' && inputs.dry_run != true
