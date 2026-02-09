@@ -184,6 +184,18 @@ jobs:
         run: |
           helm-docs --chart-search-root=charts
 
+      - name: Generate values schema
+        if: steps.check.outputs.skip != 'true'
+        uses: losisin/helm-values-schema-json-action@v2
+        with:
+          values: charts/openclaw/values.yaml
+          output: charts/openclaw/values.schema.json
+          draft: 2020
+          indent: 4
+          useHelmDocs: true
+          title: OpenClaw Helm Chart Values
+          description: "Configuration values for the OpenClaw Helm chart. OpenClaw is a single-instance AI assistant — do NOT increase replica count."
+
       - name: Show changes
         if: steps.check.outputs.skip != 'true'
         run: |
@@ -194,7 +206,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add charts/openclaw/Chart.yaml charts/openclaw/values.yaml charts/openclaw/README.md
+          git add charts/openclaw/Chart.yaml charts/openclaw/values.yaml charts/openclaw/README.md charts/openclaw/values.schema.json
           parts=""
           if [ "${{ steps.check.outputs.openclaw_changed }}" = "true" ]; then
             parts="openclaw to ${{ steps.get-version.outputs.version }}"

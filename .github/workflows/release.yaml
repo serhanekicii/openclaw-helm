@@ -109,9 +109,20 @@ jobs:
         run: |
           helm-docs --chart-search-root=charts
 
+      - name: Generate values schema
+        uses: losisin/helm-values-schema-json-action@v2
+        with:
+          values: charts/openclaw/values.yaml
+          output: charts/openclaw/values.schema.json
+          draft: 2020
+          indent: 4
+          useHelmDocs: true
+          title: OpenClaw Helm Chart Values
+          description: "Configuration values for the OpenClaw Helm chart. OpenClaw is a single-instance AI assistant — do NOT increase replica count."
+
       - name: Commit changes
         run: |
-          git add charts/openclaw/Chart.yaml charts/openclaw/README.md
+          git add charts/openclaw/Chart.yaml charts/openclaw/README.md charts/openclaw/values.schema.json
           if ! git diff --staged --quiet; then
             git commit -m "chore: update chart version and docs"
             git push

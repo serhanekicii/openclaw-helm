@@ -1,0 +1,11 @@
+values:
+  - values.yaml
+draft: 2020
+output: values.schema.json
+useHelmDocs: true
+indent: 4
+schemaRoot:
+  title: OpenClaw Helm Chart Values
+  description: >-
+    Configuration values for the OpenClaw Helm chart.
+    OpenClaw is a single-instance AI assistant — do NOT increase replica count.

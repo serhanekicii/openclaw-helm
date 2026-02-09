@@ -1,0 +1,22 @@
+repos:
+  - repo: https://github.com/losisin/helm-values-schema-json
+    rev: v1.7.2
+    hooks:
+      - id: helm-schema
+        name: Generate values.schema.json
+        pass_filenames: false
+        files: charts/openclaw/values\.yaml
+        args:
+          - --values
+          - charts/openclaw/values.yaml
+          - --output
+          - charts/openclaw/values.schema.json
+          - --draft
+          - "2020"
+          - --indent
+          - "4"
+          - --use-helm-docs
+          - --schema-root.title
+          - "OpenClaw Helm Chart Values"
+          - --schema-root.description
+          - "Configuration values for the OpenClaw Helm chart. OpenClaw is a single-instance AI assistant — do NOT increase replica count."

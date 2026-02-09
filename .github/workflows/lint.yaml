@@ -47,6 +47,24 @@ jobs:
         if: steps.list-changed.outputs.changed == 'true'
         run: ct lint --config ct.yaml
 
+  schema:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Validate values schema is up-to-date
+        uses: losisin/helm-values-schema-json-action@v2
+        with:
+          values: charts/openclaw/values.yaml
+          output: charts/openclaw/values.schema.json
+          draft: 2020
+          indent: 4
+          useHelmDocs: true
+          title: OpenClaw Helm Chart Values
+          description: "Configuration values for the OpenClaw Helm chart. OpenClaw is a single-instance AI assistant — do NOT increase replica count."
+          fail-on-diff: true
+
   validate:
     runs-on: ubuntu-24.04
     steps:

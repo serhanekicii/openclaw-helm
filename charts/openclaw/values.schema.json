@@ -1,0 +1,1107 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "OpenClaw Helm Chart Values",
+    "description": "Configuration values for the OpenClaw Helm chart. OpenClaw is a single-instance AI assistant — do NOT increase replica count.",
+    "type": "object",
+    "properties": {
+        "app-template": {
+            "type": "object",
+            "required": [
+                "openclawVersion"
+            ],
+            "properties": {
+                "chromiumVersion": {
+                    "description": "Chromium sidecar image version",
+                    "type": "string"
+                },
+                "configMaps": {
+                    "type": "object",
+                    "properties": {
+                        "config": {
+                            "type": "object",
+                            "properties": {
+                                "data": {
+                                    "type": "object",
+                                    "properties": {
+                                        "openclaw.json": {
+                                            "type": "string"
+                                        }
+                                    }
+                                },
+                                "enabled": {
+                                    "default": true,
+                                    "type": "boolean"
+                                }
+                            }
+                        }
+                    }
+                },
+                "configMode": {
+                    "description": "Config mode: `merge` preserves runtime changes, `overwrite` for strict GitOps",
+                    "default": "merge",
+                    "type": "string",
+                    "enum": [
+                        "merge",
+                        "overwrite"
+                    ]
+                },
+                "controllers": {
+                    "type": "object",
+                    "properties": {
+                        "main": {
+                            "type": "object",
+                            "properties": {
+                                "containers": {
+                                    "type": "object",
+                                    "properties": {
+                                        "chromium": {
+                                            "description": "Chromium sidecar for browser automation (CDP on port 9222)",
+                                            "type": "object",
+                                            "properties": {
+                                                "args": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "command": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "enabled": {
+                                                    "description": "Enable/disable the Chromium browser sidecar",
+                                                    "default": true,
+                                                    "type": "boolean"
+                                                },
+                                                "env": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "XDG_CACHE_HOME": {
+                                                            "type": "string"
+                                                        }
+                                                    }
+                                                },
+                                                "image": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "repository": {
+                                                            "description": "Chromium image repository",
+                                                            "default": "zenika/alpine-chrome",
+                                                            "type": "string"
+                                                        },
+                                                        "tag": {
+                                                            "description": "Chromium image tag",
+                                                            "type": "string"
+                                                        }
+                                                    }
+                                                },
+                                                "probes": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "liveness": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "custom": {
+                                                                    "default": true,
+                                                                    "type": "boolean"
+                                                                },
+                                                                "enabled": {
+                                                                    "default": true,
+                                                                    "type": "boolean"
+                                                                },
+                                                                "spec": {
+                                                                    "type": "object",
+                                                                    "properties": {
+                                                                        "failureThreshold": {
+                                                                            "default": 6,
+                                                                            "type": "integer"
+                                                                        },
+                                                                        "initialDelaySeconds": {
+                                                                            "default": 10,
+                                                                            "type": "integer"
+                                                                        },
+                                                                        "periodSeconds": {
+                                                                            "default": 30,
+                                                                            "type": "integer"
+                                                                        },
+                                                                        "tcpSocket": {
+                                                                            "type": "object",
+                                                                            "properties": {
+                                                                                "port": {
+                                                                                    "default": 9222,
+                                                                                    "type": "integer"
+                                                                                }
+                                                                            }
+                                                                        },
+                                                                        "timeoutSeconds": {
+                                                                            "default": 5,
+                                                                            "type": "integer"
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        },
+                                                        "readiness": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "custom": {
+                                                                    "default": true,
+                                                                    "type": "boolean"
+                                                                },
+                                                                "enabled": {
+                                                                    "default": true,
+                                                                    "type": "boolean"
+                                                                },
+                                                                "spec": {
+                                                                    "type": "object",
+                                                                    "properties": {
+                                                                        "initialDelaySeconds": {
+                                                                            "default": 5,
+                                                                            "type": "integer"
+                                                                        },
+                                                                        "periodSeconds": {
+                                                                            "default": 10,
+                                                                            "type": "integer"
+                                                                        },
+                                                                        "tcpSocket": {
+                                                                            "type": "object",
+                                                                            "properties": {
+                                                                                "port": {
+                                                                                    "default": 9222,
+                                                                                    "type": "integer"
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        },
+                                                        "startup": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "custom": {
+                                                                    "default": true,
+                                                                    "type": "boolean"
+                                                                },
+                                                                "enabled": {
+                                                                    "default": true,
+                                                                    "type": "boolean"
+                                                                },
+                                                                "spec": {
+                                                                    "type": "object",
+                                                                    "properties": {
+                                                                        "failureThreshold": {
+                                                                            "default": 12,
+                                                                            "type": "integer"
+                                                                        },
+                                                                        "initialDelaySeconds": {
+                                                                            "default": 5,
+                                                                            "type": "integer"
+                                                                        },
+                                                                        "periodSeconds": {
+                                                                            "default": 5,
+                                                                            "type": "integer"
+                                                                        },
+                                                                        "tcpSocket": {
+                                                                            "type": "object",
+                                                                            "properties": {
+                                                                                "port": {
+                                                                                    "default": 9222,
+                                                                                    "type": "integer"
+                                                                                }
+                                                                            }
+                                                                        },
+                                                                        "timeoutSeconds": {
+                                                                            "default": 5,
+                                                                            "type": "integer"
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                },
+                                                "resources": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "limits": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "cpu": {
+                                                                    "default": "1000m",
+                                                                    "type": "string"
+                                                                },
+                                                                "memory": {
+                                                                    "default": "1Gi",
+                                                                    "type": "string"
+                                                                }
+                                                            }
+                                                        },
+                                                        "requests": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "cpu": {
+                                                                    "default": "100m",
+                                                                    "type": "string"
+                                                                },
+                                                                "memory": {
+                                                                    "default": "256Mi",
+                                                                    "type": "string"
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                },
+                                                "securityContext": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "allowPrivilegeEscalation": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "capabilities": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "drop": {
+                                                                    "type": "array",
+                                                                    "items": {
+                                                                        "type": "string"
+                                                                    }
+                                                                }
+                                                            }
+                                                        },
+                                                        "readOnlyRootFilesystem": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "runAsGroup": {
+                                                            "type": "integer"
+                                                        },
+                                                        "runAsNonRoot": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "runAsUser": {
+                                                            "type": "integer"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        "main": {
+                                            "description": "Main OpenClaw container",
+                                            "type": "object",
+                                            "properties": {
+                                                "args": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "command": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "env": {
+                                                    "type": "object"
+                                                },
+                                                "envFrom": {
+                                                    "type": "array"
+                                                },
+                                                "image": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "pullPolicy": {
+                                                            "description": "Image pull policy",
+                                                            "default": "IfNotPresent",
+                                                            "type": "string",
+                                                            "enum": [
+                                                                "Always",
+                                                                "IfNotPresent",
+                                                                "Never"
+                                                            ]
+                                                        },
+                                                        "repository": {
+                                                            "description": "Container image repository",
+                                                            "default": "ghcr.io/openclaw/openclaw",
+                                                            "type": "string"
+                                                        },
+                                                        "tag": {
+                                                            "description": "Container image tag",
+                                                            "type": "string"
+                                                        }
+                                                    }
+                                                },
+                                                "probes": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "liveness": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "enabled": {
+                                                                    "default": true,
+                                                                    "type": "boolean"
+                                                                },
+                                                                "spec": {
+                                                                    "type": "object",
+                                                                    "properties": {
+                                                                        "failureThreshold": {
+                                                                            "default": 3,
+                                                                            "type": "integer"
+                                                                        },
+                                                                        "initialDelaySeconds": {
+                                                                            "default": 30,
+                                                                            "type": "integer"
+                                                                        },
+                                                                        "periodSeconds": {
+                                                                            "default": 30,
+                                                                            "type": "integer"
+                                                                        },
+                                                                        "tcpSocket": {
+                                                                            "type": "object",
+                                                                            "properties": {
+                                                                                "port": {
+                                                                                    "default": 18789,
+                                                                                    "type": "integer"
+                                                                                }
+                                                                            }
+                                                                        },
+                                                                        "timeoutSeconds": {
+                                                                            "default": 5,
+                                                                            "type": "integer"
+                                                                        }
+                                                                    }
+                                                                },
+                                                                "type": {
+                                                                    "default": "TCP",
+                                                                    "type": "string"
+                                                                }
+                                                            }
+                                                        },
+                                                        "readiness": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "enabled": {
+                                                                    "default": true,
+                                                                    "type": "boolean"
+                                                                },
+                                                                "spec": {
+                                                                    "type": "object",
+                                                                    "properties": {
+                                                                        "failureThreshold": {
+                                                                            "default": 3,
+                                                                            "type": "integer"
+                                                                        },
+                                                                        "initialDelaySeconds": {
+                                                                            "default": 10,
+                                                                            "type": "integer"
+                                                                        },
+                                                                        "periodSeconds": {
+                                                                            "default": 10,
+                                                                            "type": "integer"
+                                                                        },
+                                                                        "tcpSocket": {
+                                                                            "type": "object",
+                                                                            "properties": {
+                                                                                "port": {
+                                                                                    "default": 18789,
+                                                                                    "type": "integer"
+                                                                                }
+                                                                            }
+                                                                        },
+                                                                        "timeoutSeconds": {
+                                                                            "default": 5,
+                                                                            "type": "integer"
+                                                                        }
+                                                                    }
+                                                                },
+                                                                "type": {
+                                                                    "default": "TCP",
+                                                                    "type": "string"
+                                                                }
+                                                            }
+                                                        },
+                                                        "startup": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "enabled": {
+                                                                    "default": true,
+                                                                    "type": "boolean"
+                                                                },
+                                                                "spec": {
+                                                                    "type": "object",
+                                                                    "properties": {
+                                                                        "failureThreshold": {
+                                                                            "default": 30,
+                                                                            "type": "integer"
+                                                                        },
+                                                                        "initialDelaySeconds": {
+                                                                            "default": 5,
+                                                                            "type": "integer"
+                                                                        },
+                                                                        "periodSeconds": {
+                                                                            "default": 5,
+                                                                            "type": "integer"
+                                                                        },
+                                                                        "tcpSocket": {
+                                                                            "type": "object",
+                                                                            "properties": {
+                                                                                "port": {
+                                                                                    "default": 18789,
+                                                                                    "type": "integer"
+                                                                                }
+                                                                            }
+                                                                        },
+                                                                        "timeoutSeconds": {
+                                                                            "default": 5,
+                                                                            "type": "integer"
+                                                                        }
+                                                                    }
+                                                                },
+                                                                "type": {
+                                                                    "default": "TCP",
+                                                                    "type": "string"
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                },
+                                                "resources": {
+                                                    "description": "Resource requests and limits",
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "limits": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "cpu": {
+                                                                    "default": "2000m",
+                                                                    "type": "string"
+                                                                },
+                                                                "memory": {
+                                                                    "default": "2Gi",
+                                                                    "type": "string"
+                                                                }
+                                                            }
+                                                        },
+                                                        "requests": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "cpu": {
+                                                                    "default": "200m",
+                                                                    "type": "string"
+                                                                },
+                                                                "memory": {
+                                                                    "default": "512Mi",
+                                                                    "type": "string"
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                },
+                                                "securityContext": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "allowPrivilegeEscalation": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "capabilities": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "drop": {
+                                                                    "type": "array",
+                                                                    "items": {
+                                                                        "type": "string"
+                                                                    }
+                                                                }
+                                                            }
+                                                        },
+                                                        "readOnlyRootFilesystem": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "runAsGroup": {
+                                                            "type": "integer"
+                                                        },
+                                                        "runAsNonRoot": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "runAsUser": {
+                                                            "type": "integer"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "initContainers": {
+                                    "type": "object",
+                                    "properties": {
+                                        "init-config": {
+                                            "type": "object",
+                                            "properties": {
+                                                "command": {
+                                                    "description": "Init-config startup script",
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "env": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "CONFIG_MODE": {
+                                                            "type": "string"
+                                                        }
+                                                    }
+                                                },
+                                                "image": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "repository": {
+                                                            "default": "ghcr.io/openclaw/openclaw",
+                                                            "type": "string"
+                                                        },
+                                                        "tag": {
+                                                            "type": "string"
+                                                        }
+                                                    }
+                                                },
+                                                "securityContext": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "allowPrivilegeEscalation": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "capabilities": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "drop": {
+                                                                    "type": "array",
+                                                                    "items": {
+                                                                        "type": "string"
+                                                                    }
+                                                                }
+                                                            }
+                                                        },
+                                                        "readOnlyRootFilesystem": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "runAsGroup": {
+                                                            "type": "integer"
+                                                        },
+                                                        "runAsNonRoot": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "runAsUser": {
+                                                            "type": "integer"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        "init-skills": {
+                                            "type": "object",
+                                            "properties": {
+                                                "command": {
+                                                    "description": "Init-skills startup script",
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "env": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "HOME": {
+                                                            "type": "string"
+                                                        },
+                                                        "NPM_CONFIG_CACHE": {
+                                                            "type": "string"
+                                                        }
+                                                    }
+                                                },
+                                                "image": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "repository": {
+                                                            "default": "ghcr.io/openclaw/openclaw",
+                                                            "type": "string"
+                                                        },
+                                                        "tag": {
+                                                            "type": "string"
+                                                        }
+                                                    }
+                                                },
+                                                "securityContext": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "allowPrivilegeEscalation": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "capabilities": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "drop": {
+                                                                    "type": "array",
+                                                                    "items": {
+                                                                        "type": "string"
+                                                                    }
+                                                                }
+                                                            }
+                                                        },
+                                                        "readOnlyRootFilesystem": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "runAsGroup": {
+                                                            "type": "integer"
+                                                        },
+                                                        "runAsNonRoot": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "runAsUser": {
+                                                            "type": "integer"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "replicas": {
+                                    "description": "Number of replicas (must be 1, OpenClaw doesn't support horizontal scaling)",
+                                    "default": 1,
+                                    "type": "integer",
+                                    "maximum": 1,
+                                    "minimum": 1
+                                },
+                                "strategy": {
+                                    "description": "Deployment strategy",
+                                    "default": "Recreate",
+                                    "type": "string",
+                                    "enum": [
+                                        "Recreate",
+                                        "RollingUpdate"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "defaultPodOptions": {
+                    "type": "object",
+                    "properties": {
+                        "securityContext": {
+                            "description": "Pod security context",
+                            "type": "object",
+                            "properties": {
+                                "fsGroup": {
+                                    "default": 1000,
+                                    "type": "integer"
+                                },
+                                "fsGroupChangePolicy": {
+                                    "default": "OnRootMismatch",
+                                    "type": "string",
+                                    "enum": [
+                                        "Always",
+                                        "OnRootMismatch"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "ingress": {
+                    "type": "object",
+                    "properties": {
+                        "main": {
+                            "type": "object",
+                            "properties": {
+                                "enabled": {
+                                    "description": "Enable ingress resource creation",
+                                    "default": false,
+                                    "type": "boolean"
+                                }
+                            }
+                        }
+                    }
+                },
+                "networkpolicies": {
+                    "type": "object",
+                    "properties": {
+                        "main": {
+                            "type": "object",
+                            "properties": {
+                                "controller": {
+                                    "default": "main",
+                                    "type": "string"
+                                },
+                                "enabled": {
+                                    "description": "Enable network policy (default deny-all with explicit allow rules)",
+                                    "default": false,
+                                    "type": "boolean"
+                                },
+                                "policyTypes": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
+                                "rules": {
+                                    "type": "object",
+                                    "properties": {
+                                        "egress": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "ports": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "port": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "protocol": {
+                                                                    "type": "string"
+                                                                }
+                                                            }
+                                                        }
+                                                    },
+                                                    "to": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "ipBlock": {
+                                                                    "type": "object",
+                                                                    "properties": {
+                                                                        "cidr": {
+                                                                            "type": "string"
+                                                                        },
+                                                                        "except": {
+                                                                            "type": "array",
+                                                                            "items": {
+                                                                                "type": "string"
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                },
+                                                                "namespaceSelector": {
+                                                                    "type": "object",
+                                                                    "properties": {
+                                                                        "matchLabels": {
+                                                                            "type": "object",
+                                                                            "properties": {
+                                                                                "kubernetes.io/metadata.name": {
+                                                                                    "type": "string"
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                },
+                                                                "podSelector": {
+                                                                    "type": "object",
+                                                                    "properties": {
+                                                                        "matchLabels": {
+                                                                            "type": "object",
+                                                                            "properties": {
+                                                                                "k8s-app": {
+                                                                                    "type": "string"
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        "ingress": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "from": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "namespaceSelector": {
+                                                                    "type": "object",
+                                                                    "properties": {
+                                                                        "matchLabels": {
+                                                                            "type": "object",
+                                                                            "properties": {
+                                                                                "kubernetes.io/metadata.name": {
+                                                                                    "type": "string"
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    },
+                                                    "ports": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "port": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "protocol": {
+                                                                    "type": "string"
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "openclawVersion": {
+                    "description": "OpenClaw image version (used by all OpenClaw containers)",
+                    "type": "string"
+                },
+                "persistence": {
+                    "type": "object",
+                    "properties": {
+                        "config": {
+                            "type": "object",
+                            "properties": {
+                                "advancedMounts": {
+                                    "type": "object",
+                                    "properties": {
+                                        "main": {
+                                            "type": "object",
+                                            "properties": {
+                                                "init-config": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "path": {
+                                                                "type": "string"
+                                                            },
+                                                            "readOnly": {
+                                                                "type": "boolean"
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "enabled": {
+                                    "default": true,
+                                    "type": "boolean"
+                                },
+                                "identifier": {
+                                    "default": "config",
+                                    "type": "string"
+                                },
+                                "type": {
+                                    "default": "configMap",
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "data": {
+                            "type": "object",
+                            "properties": {
+                                "accessMode": {
+                                    "description": "PVC access mode",
+                                    "default": "ReadWriteOnce",
+                                    "type": "string",
+                                    "enum": [
+                                        "ReadWriteOnce",
+                                        "ReadWriteMany",
+                                        "ReadOnlyMany"
+                                    ]
+                                },
+                                "advancedMounts": {
+                                    "type": "object",
+                                    "properties": {
+                                        "main": {
+                                            "type": "object",
+                                            "properties": {
+                                                "init-config": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "path": {
+                                                                "type": "string"
+                                                            }
+                                                        }
+                                                    }
+                                                },
+                                                "init-skills": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "path": {
+                                                                "type": "string"
+                                                            }
+                                                        }
+                                                    }
+                                                },
+                                                "main": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "path": {
+                                                                "type": "string"
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "enabled": {
+                                    "default": true,
+                                    "type": "boolean"
+                                },
+                                "size": {
+                                    "description": "PVC storage size",
+                                    "default": "5Gi",
+                                    "type": "string"
+                                },
+                                "type": {
+                                    "default": "persistentVolumeClaim",
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "tmp": {
+                            "type": "object",
+                            "properties": {
+                                "advancedMounts": {
+                                    "type": "object",
+                                    "properties": {
+                                        "main": {
+                                            "type": "object",
+                                            "properties": {
+                                                "chromium": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "path": {
+                                                                "type": "string"
+                                                            }
+                                                        }
+                                                    }
+                                                },
+                                                "init-config": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "path": {
+                                                                "type": "string"
+                                                            }
+                                                        }
+                                                    }
+                                                },
+                                                "init-skills": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "path": {
+                                                                "type": "string"
+                                                            }
+                                                        }
+                                                    }
+                                                },
+                                                "main": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "path": {
+                                                                "type": "string"
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "enabled": {
+                                    "default": true,
+                                    "type": "boolean"
+                                },
+                                "type": {
+                                    "default": "emptyDir",
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                },
+                "service": {
+                    "type": "object",
+                    "properties": {
+                        "main": {
+                            "type": "object",
+                            "properties": {
+                                "controller": {
+                                    "type": "string"
+                                },
+                                "ipFamilies": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
+                                "ipFamilyPolicy": {
+                                    "description": "IPv4-only (see trustedProxies note in gateway config)",
+                                    "default": "SingleStack",
+                                    "type": "string",
+                                    "enum": [
+                                        "SingleStack",
+                                        "PreferDualStack",
+                                        "RequireDualStack"
+                                    ]
+                                },
+                                "ports": {
+                                    "type": "object",
+                                    "properties": {
+                                        "http": {
+                                            "type": "object",
+                                            "properties": {
+                                                "port": {
+                                                    "description": "Gateway service port",
+                                                    "default": 18789,
+                                                    "type": "integer"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
