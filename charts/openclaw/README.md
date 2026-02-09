@@ -182,9 +182,9 @@ All values are nested under `app-template:`. See [values.yaml](values.yaml) for 
 | app-template.controllers.main.replicas | int | `1` | Number of replicas (must be 1, OpenClaw doesn't support horizontal scaling) |
 | app-template.controllers.main.strategy | string | `"Recreate"` | Deployment strategy |
 | app-template.defaultPodOptions.securityContext | object | `{"fsGroup":1000,"fsGroupChangePolicy":"OnRootMismatch"}` | Pod security context |
-| app-template.ingress.main.enabled | bool | `false` |  |
+| app-template.ingress.main.enabled | bool | `false` | Enable ingress resource creation |
 | app-template.networkpolicies.main.controller | string | `"main"` |  |
-| app-template.networkpolicies.main.enabled | bool | `false` |  |
+| app-template.networkpolicies.main.enabled | bool | `false` | Enable network policy (default deny-all with explicit allow rules) |
 | app-template.networkpolicies.main.policyTypes[0] | string | `"Ingress"` |  |
 | app-template.networkpolicies.main.policyTypes[1] | string | `"Egress"` |  |
 | app-template.networkpolicies.main.rules.egress[0].ports[0].port | int | `53` |  |
@@ -208,12 +208,12 @@ All values are nested under `app-template:`. See [values.yaml](values.yaml) for 
 | app-template.persistence.config.enabled | bool | `true` |  |
 | app-template.persistence.config.identifier | string | `"config"` |  |
 | app-template.persistence.config.type | string | `"configMap"` |  |
-| app-template.persistence.data.accessMode | string | `"ReadWriteOnce"` |  |
+| app-template.persistence.data.accessMode | string | `"ReadWriteOnce"` | PVC access mode |
 | app-template.persistence.data.advancedMounts.main.init-config[0].path | string | `"/home/node/.openclaw"` |  |
 | app-template.persistence.data.advancedMounts.main.init-skills[0].path | string | `"/home/node/.openclaw"` |  |
 | app-template.persistence.data.advancedMounts.main.main[0].path | string | `"/home/node/.openclaw"` |  |
 | app-template.persistence.data.enabled | bool | `true` |  |
-| app-template.persistence.data.size | string | `"5Gi"` |  |
+| app-template.persistence.data.size | string | `"5Gi"` | PVC storage size |
 | app-template.persistence.data.type | string | `"persistentVolumeClaim"` |  |
 | app-template.persistence.tmp.advancedMounts.main.chromium[0].path | string | `"/tmp"` |  |
 | app-template.persistence.tmp.advancedMounts.main.init-config[0].path | string | `"/tmp"` |  |
@@ -223,8 +223,8 @@ All values are nested under `app-template:`. See [values.yaml](values.yaml) for 
 | app-template.persistence.tmp.type | string | `"emptyDir"` |  |
 | app-template.service.main.controller | string | `"main"` |  |
 | app-template.service.main.ipFamilies[0] | string | `"IPv4"` |  |
-| app-template.service.main.ipFamilyPolicy | string | `"SingleStack"` |  |
-| app-template.service.main.ports.http.port | int | `18789` |  |
+| app-template.service.main.ipFamilyPolicy | string | `"SingleStack"` | IPv4-only (see trustedProxies note in gateway config) |
+| app-template.service.main.ports.http.port | int | `18789` | Gateway service port |
 
 </details>
 
