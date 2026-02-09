@@ -19,8 +19,10 @@ app-template:
   defaultPodOptions:
     # -- Pod security context
     securityContext:
-      fsGroup: 1000 # @schema type:integer;default:1000
-      fsGroupChangePolicy: OnRootMismatch # @schema type:string;enum:[Always, OnRootMismatch];default:OnRootMismatch
+      # @schema type:integer;default:1000
+      fsGroup: 1000
+      # @schema type:string;enum:[Always, OnRootMismatch];default:OnRootMismatch
+      fsGroupChangePolicy: OnRootMismatch
 
   controllers:
     main:
@@ -36,8 +38,10 @@ app-template:
         # Uses OpenClaw image for Node.js runtime (required for merge mode).
         init-config:
           image:
-            repository: ghcr.io/openclaw/openclaw # @schema type:string;default:ghcr.io/openclaw/openclaw
-            tag: "{{ .Values.openclawVersion }}" # @schema type:string
+            # @schema type:string;default:ghcr.io/openclaw/openclaw
+            repository: ghcr.io/openclaw/openclaw
+            # @schema type:string
+            tag: "{{ .Values.openclawVersion }}"
           # -- Init-config startup script
           # @default -- See values.yaml
           command:
@@ -122,8 +126,10 @@ app-template:
         # Skills are installed from https://clawhub.com
         init-skills:
           image:
-            repository: ghcr.io/openclaw/openclaw # @schema type:string;default:ghcr.io/openclaw/openclaw
-            tag: "{{ .Values.openclawVersion }}" # @schema type:string
+            # @schema type:string;default:ghcr.io/openclaw/openclaw
+            repository: ghcr.io/openclaw/openclaw
+            # @schema type:string
+            tag: "{{ .Values.openclawVersion }}"
           # -- Init-skills startup script
           # @default -- See values.yaml
           command:
@@ -224,42 +230,67 @@ app-template:
           # -- Resource requests and limits
           resources:
             requests:
-              cpu: 200m # @schema type:string;default:200m
-              memory: 512Mi # @schema type:string;default:512Mi
+              # @schema type:string;default:200m
+              cpu: 200m
+              # @schema type:string;default:512Mi
+              memory: 512Mi
             limits:
-              cpu: 2000m # @schema type:string;default:2000m
-              memory: 2Gi # @schema type:string;default:2Gi
+              # @schema type:string;default:2000m
+              cpu: 2000m
+              # @schema type:string;default:2Gi
+              memory: 2Gi
           probes:
             liveness:
-              enabled: true # @schema type:boolean;default:true
-              type: TCP # @schema type:string;default:TCP
+              # @schema type:boolean;default:true
+              enabled: true
+              # @schema type:string;default:TCP
+              type: TCP
               spec:
                 tcpSocket:
-                  port: 18789 # @schema type:integer;default:18789
-                initialDelaySeconds: 30 # @schema type:integer;default:30
-                periodSeconds: 30 # @schema type:integer;default:30
-                timeoutSeconds: 5 # @schema type:integer;default:5
-                failureThreshold: 3 # @schema type:integer;default:3
+                  # @schema type:integer;default:18789
+                  port: 18789
+                # @schema type:integer;default:30
+                initialDelaySeconds: 30
+                # @schema type:integer;default:30
+                periodSeconds: 30
+                # @schema type:integer;default:5
+                timeoutSeconds: 5
+                # @schema type:integer;default:3
+                failureThreshold: 3
             readiness:
-              enabled: true # @schema type:boolean;default:true
-              type: TCP # @schema type:string;default:TCP
+              # @schema type:boolean;default:true
+              enabled: true
+              # @schema type:string;default:TCP
+              type: TCP
               spec:
                 tcpSocket:
-                  port: 18789 # @schema type:integer;default:18789
-                initialDelaySeconds: 10 # @schema type:integer;default:10
-                periodSeconds: 10 # @schema type:integer;default:10
-                timeoutSeconds: 5 # @schema type:integer;default:5
-                failureThreshold: 3 # @schema type:integer;default:3
+                  # @schema type:integer;default:18789
+                  port: 18789
+                # @schema type:integer;default:10
+                initialDelaySeconds: 10
+                # @schema type:integer;default:10
+                periodSeconds: 10
+                # @schema type:integer;default:5
+                timeoutSeconds: 5
+                # @schema type:integer;default:3
+                failureThreshold: 3
             startup:
-              enabled: true # @schema type:boolean;default:true
-              type: TCP # @schema type:string;default:TCP
+              # @schema type:boolean;default:true
+              enabled: true
+              # @schema type:string;default:TCP
+              type: TCP
               spec:
                 tcpSocket:
-                  port: 18789 # @schema type:integer;default:18789
-                initialDelaySeconds: 5 # @schema type:integer;default:5
-                periodSeconds: 5 # @schema type:integer;default:5
-                timeoutSeconds: 5 # @schema type:integer;default:5
-                failureThreshold: 30 # @schema type:integer;default:30
+                  # @schema type:integer;default:18789
+                  port: 18789
+                # @schema type:integer;default:5
+                initialDelaySeconds: 5
+                # @schema type:integer;default:5
+                periodSeconds: 5
+                # @schema type:integer;default:5
+                timeoutSeconds: 5
+                # @schema type:integer;default:30
+                failureThreshold: 30
 
         # -- Chromium sidecar for browser automation (CDP on port 9222)
         chromium:
@@ -297,48 +328,73 @@ app-template:
                 - ALL
           resources:
             requests:
-              cpu: 100m # @schema type:string;default:100m
-              memory: 256Mi # @schema type:string;default:256Mi
+              # @schema type:string;default:100m
+              cpu: 100m
+              # @schema type:string;default:256Mi
+              memory: 256Mi
             limits:
-              cpu: 1000m # @schema type:string;default:1000m
-              memory: 1Gi # @schema type:string;default:1Gi
+              # @schema type:string;default:1000m
+              cpu: 1000m
+              # @schema type:string;default:1Gi
+              memory: 1Gi
           probes:
             liveness:
-              enabled: true # @schema type:boolean;default:true
-              custom: true # @schema type:boolean;default:true
+              # @schema type:boolean;default:true
+              enabled: true
+              # @schema type:boolean;default:true
+              custom: true
               spec:
                 tcpSocket:
-                  port: 9222 # @schema type:integer;default:9222
-                initialDelaySeconds: 10 # @schema type:integer;default:10
-                periodSeconds: 30 # @schema type:integer;default:30
-                timeoutSeconds: 5 # @schema type:integer;default:5
-                failureThreshold: 6 # @schema type:integer;default:6
+                  # @schema type:integer;default:9222
+                  port: 9222
+                # @schema type:integer;default:10
+                initialDelaySeconds: 10
+                # @schema type:integer;default:30
+                periodSeconds: 30
+                # @schema type:integer;default:5
+                timeoutSeconds: 5
+                # @schema type:integer;default:6
+                failureThreshold: 6
             readiness:
-              enabled: true # @schema type:boolean;default:true
-              custom: true # @schema type:boolean;default:true
+              # @schema type:boolean;default:true
+              enabled: true
+              # @schema type:boolean;default:true
+              custom: true
               spec:
                 tcpSocket:
-                  port: 9222 # @schema type:integer;default:9222
-                initialDelaySeconds: 5 # @schema type:integer;default:5
-                periodSeconds: 10 # @schema type:integer;default:10
+                  # @schema type:integer;default:9222
+                  port: 9222
+                # @schema type:integer;default:5
+                initialDelaySeconds: 5
+                # @schema type:integer;default:10
+                periodSeconds: 10
             startup:
-              enabled: true # @schema type:boolean;default:true
-              custom: true # @schema type:boolean;default:true
+              # @schema type:boolean;default:true
+              enabled: true
+              # @schema type:boolean;default:true
+              custom: true
               spec:
                 tcpSocket:
-                  port: 9222 # @schema type:integer;default:9222
-                initialDelaySeconds: 5 # @schema type:integer;default:5
-                periodSeconds: 5 # @schema type:integer;default:5
-                timeoutSeconds: 5 # @schema type:integer;default:5
-                failureThreshold: 12 # @schema type:integer;default:12
+                  # @schema type:integer;default:9222
+                  port: 9222
+                # @schema type:integer;default:5
+                initialDelaySeconds: 5
+                # @schema type:integer;default:5
+                periodSeconds: 5
+                # @schema type:integer;default:5
+                timeoutSeconds: 5
+                # @schema type:integer;default:12
+                failureThreshold: 12
 
   configMaps:
     config:
-      enabled: true # @schema type:boolean;default:true
+      # @schema type:boolean;default:true
+      enabled: true
       data:
         # OpenClaw configuration - JSON5 format
         # Sensitive values use ${ENV_VAR} substitution from environment secret
-        openclaw.json: | # @schema type:string
+        # @schema type:string
+        openclaw.json: |
           {
             // Gateway configuration
             "gateway": {
@@ -476,9 +532,12 @@ app-template:
   persistence:
     # ConfigMap for init container to copy from
     config:
-      enabled: true # @schema type:boolean;default:true
-      type: configMap # @schema type:string;default:configMap
-      identifier: config # @schema type:string;default:config
+      # @schema type:boolean;default:true
+      enabled: true
+      # @schema type:string;default:configMap
+      type: configMap
+      # @schema type:string;default:config
+      identifier: config
       advancedMounts:
         main:
           init-config:
@@ -487,8 +546,10 @@ app-template:
 
     # Entire .openclaw directory as PVC
     data:
-      enabled: true # @schema type:boolean;default:true
-      type: persistentVolumeClaim # @schema type:string;default:persistentVolumeClaim
+      # @schema type:boolean;default:true
+      enabled: true
+      # @schema type:string;default:persistentVolumeClaim
+      type: persistentVolumeClaim
       # @schema type:string;enum:[ReadWriteOnce, ReadWriteMany, ReadOnlyMany];default:ReadWriteOnce
       # -- PVC access mode
       accessMode: ReadWriteOnce
@@ -506,8 +567,10 @@ app-template:
 
     # Writable /tmp for containers with readOnlyRootFilesystem
     tmp:
-      enabled: true # @schema type:boolean;default:true
-      type: emptyDir # @schema type:string;default:emptyDir
+      # @schema type:boolean;default:true
+      enabled: true
+      # @schema type:string;default:emptyDir
+      type: emptyDir
       advancedMounts:
         main:
           init-config:
@@ -546,7 +609,8 @@ app-template:
       # @schema type:boolean;default:false
       # -- Enable network policy (default deny-all with explicit allow rules)
       enabled: false
-      controller: main # @schema type:string;default:main
+      # @schema type:string;default:main
+      controller: main
       policyTypes:
         - Ingress
         - Egress
