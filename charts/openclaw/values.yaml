@@ -8,7 +8,7 @@
 app-template:
   # @schema type:string;required:true
   # -- OpenClaw image version (used by all OpenClaw containers)
-  openclawVersion: "2026.2.6"
+  openclawVersion: "2026.2.9"
   # @schema type:string
   # -- Chromium sidecar image version
   chromiumVersion: "124"
