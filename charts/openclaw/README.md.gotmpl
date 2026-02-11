@@ -306,6 +306,97 @@ app-template:
               done
 ```
 
+### Runtime Dependencies
+
+Some features (interfaces, skills) require additional runtimes or packages not included in the base image. The `init-skills` init container handles this -- install extra tooling to the PVC at `/home/node/.{{ .Name }}` so it persists across pod restarts and is available at runtime.
+
+This approach is necessary because all containers run with a **read-only root filesystem** as non-root (UID 1000). Default package manager paths (e.g., `/usr/local/lib/node_modules`) are not writable. Redirecting install paths to the PVC solves this.
+
+<details>
+<summary><b>pnpm (e.g., MS Teams interface)</b></summary>
+
+Interfaces like MS Teams require pnpm packages. The read-only root filesystem prevents writing to default pnpm paths (`/usr/local/lib/node_modules`, `~/.local/share/pnpm`, etc.). The fix is to install pnpm to the PVC and redirect its directories to writable mounts.
+
+The `init-skills` container already sets `HOME=/tmp`, so pnpm's cache, state, and config writes land on `/tmp` (writable emptyDir). The content-addressable store goes on the PVC so that hardlinks work (same filesystem as `node_modules`) and persist across restarts.
+
+**1. Install pnpm and packages in `init-skills`:**
+
+```yaml
+app-template:
+  controllers:
+    main:
+      initContainers:
+        init-skills:
+          command:
+            - sh
+            - -c
+            - |
+              PNPM_HOME=/home/node/.{{ .Name }}/pnpm
+              mkdir -p "$PNPM_HOME"
+              if [ ! -f "$PNPM_HOME/pnpm" ]; then
+                echo "Installing pnpm..."
+                curl -fsSL https://get.pnpm.io/install.sh | env PNPM_HOME="$PNPM_HOME" SHELL=/bin/sh sh -
+              fi
+              export PATH="$PNPM_HOME:$PATH"
+              echo "Installing interface dependencies..."
+              cd /home/node/.{{ .Name }}
+              pnpm install <your-package> --store-dir /home/node/.{{ .Name }}/.pnpm-store
+```
+
+**2. Expose pnpm to the main container:**
+
+```yaml
+app-template:
+  controllers:
+    main:
+      containers:
+        main:
+          env:
+            PATH: /home/node/.{{ .Name }}/pnpm:/home/node/.{{ .Name }}/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+            PNPM_HOME: /home/node/.{{ .Name }}/pnpm
+            PNPM_STORE_DIR: /home/node/.{{ .Name }}/.pnpm-store
+```
+
+</details>
+
+<details>
+<summary><b>uv (Python package manager)</b></summary>
+
+For skills that require Python:
+
+**1. Install uv in `init-skills`:**
+
+```yaml
+app-template:
+  controllers:
+    main:
+      initContainers:
+        init-skills:
+          command:
+            - sh
+            - -c
+            - |
+              mkdir -p /home/node/.{{ .Name }}/bin
+              if [ ! -f /home/node/.{{ .Name }}/bin/uv ]; then
+                echo "Installing uv..."
+                curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/home/node/.{{ .Name }}/bin sh
+              fi
+```
+
+**2. Add to PATH in main container:**
+
+```yaml
+app-template:
+  controllers:
+    main:
+      containers:
+        main:
+          env:
+            PATH: /home/node/.{{ .Name }}/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+```
+
+</details>
+
 ### Automatic Rollouts on ConfigMap/Secret Changes
 
 For automatic pod restarts when ConfigMap/Secret changes, use [Stakater Reloader](https://github.com/stakater/Reloader) or [ArgoCD](https://argo-cd.readthedocs.io/). See the [blog post]({{ index .Sources 1 }}) for detailed setup.
