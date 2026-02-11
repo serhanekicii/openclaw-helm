@@ -152,6 +152,24 @@ app-template:
               #   log "Installing uv..."
               #   curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/home/node/.openclaw/bin sh
               # fi
+              #
+              # Example: Install pnpm and packages for interfaces (e.g., MS Teams)
+              # The read-only filesystem and non-root UID prevent writing to default
+              # pnpm paths (/usr/local/lib/node_modules, ~/.local/share/pnpm, etc.).
+              # Redirect PNPM_HOME to the PVC so the binary persists across restarts.
+              # The init container's HOME=/tmp ensures pnpm's cache, state, and config
+              # writes land on /tmp (writable emptyDir). The store goes on the PVC so
+              # hardlinks work (same filesystem as node_modules) and persist.
+              # PNPM_HOME=/home/node/.openclaw/pnpm
+              # mkdir -p "$PNPM_HOME"
+              # if [ ! -f "$PNPM_HOME/pnpm" ]; then
+              #   log "Installing pnpm..."
+              #   curl -fsSL https://get.pnpm.io/install.sh | env PNPM_HOME="$PNPM_HOME" SHELL=/bin/sh sh -
+              # fi
+              # export PATH="$PNPM_HOME:$PATH"
+              # log "Installing interface dependencies..."
+              # cd /home/node/.openclaw
+              # pnpm install <your-package> --store-dir /home/node/.openclaw/.pnpm-store
 
               # ============================================================
               # Skill Installation
@@ -213,9 +231,11 @@ app-template:
           # - secretRef:
           #     name: openclaw-env-secret
           env: {}
-          # Example: Add runtime dependency paths for skills
+          # Example: Add runtime dependency paths for skills and extra runtimes
           # env:
-          #   PATH: /home/node/.openclaw/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+          #   PATH: /home/node/.openclaw/pnpm:/home/node/.openclaw/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+          #   PNPM_HOME: /home/node/.openclaw/pnpm
+          #   PNPM_STORE_DIR: /home/node/.openclaw/.pnpm-store
           #   # For internal CA trust (Python requests library)
           #   REQUESTS_CA_BUNDLE: /etc/ssl/certs/ca-bundle.crt
           securityContext:
