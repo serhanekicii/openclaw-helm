@@ -3,8 +3,8 @@
 [![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/openclaw-helm)](https://artifacthub.io/packages/helm/openclaw-helm/openclaw)
 [![Helm 3](https://img.shields.io/badge/Helm-3.0+-0f1689?logo=helm&logoColor=white)](https://helm.sh/)
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-1.26+-326ce5?logo=kubernetes&logoColor=white)](https://kubernetes.io/)
-[![App Version](https://img.shields.io/badge/App_Version-2026.2.15-blue)](https://github.com/openclaw/openclaw)
-[![Chart Version](https://img.shields.io/badge/Chart_Version-1.3.17-blue)](https://github.com/serhanekicii/openclaw-helm)
+[![App Version](https://img.shields.io/badge/App_Version-2026.2.17-blue)](https://github.com/openclaw/openclaw)
+[![Chart Version](https://img.shields.io/badge/Chart_Version-1.3.18-blue)](https://github.com/serhanekicii/openclaw-helm)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 Helm chart for deploying OpenClaw on Kubernetes — an AI assistant that connects to messaging platforms and executes tasks autonomously.
@@ -22,7 +22,7 @@ OpenClaw runs as a single-instance deployment (cannot scale horizontally):
 | Gateway | 18789 | Main HTTP/WebSocket interface |
 | Chromium | 9222 | Headless browser for automation (CDP, optional) |
 
-**App Version:** 2026.2.15
+**App Version:** 2026.2.17
 
 ---
 
@@ -104,7 +104,7 @@ app-template:
         main:
           image:
             repository: ghcr.io/your-org/openclaw-fork
-            tag: "2026.2.15"
+            tag: "2026.2.17"
 ```
 
 For images hosted in a private registry inside your cluster:
@@ -117,7 +117,7 @@ app-template:
         main:
           image:
             repository: registry.internal/openclaw
-            tag: "2026.2.15"
+            tag: "2026.2.17"
             pullPolicy: Always
 ```
 
@@ -202,7 +202,7 @@ All values are nested under `app-template:`. See [values.yaml](values.yaml) for 
 | app-template.networkpolicies.main.rules.ingress[0].from[0].namespaceSelector.matchLabels."kubernetes.io/metadata.name" | string | `"gateway-system"` |  |
 | app-template.networkpolicies.main.rules.ingress[0].ports[0].port | int | `18789` |  |
 | app-template.networkpolicies.main.rules.ingress[0].ports[0].protocol | string | `"TCP"` |  |
-| app-template.openclawVersion | string | `"2026.2.15"` | OpenClaw image version (used by all OpenClaw containers) |
+| app-template.openclawVersion | string | `"2026.2.17"` | OpenClaw image version (used by all OpenClaw containers) |
 | app-template.persistence.config.advancedMounts.main.init-config[0].path | string | `"/config"` |  |
 | app-template.persistence.config.advancedMounts.main.init-config[0].readOnly | bool | `true` |  |
 | app-template.persistence.config.enabled | bool | `true` |  |
