@@ -600,6 +600,32 @@ kubectl logs -n openclaw deployment/openclaw
 
 # Port forward
 kubectl port-forward -n openclaw svc/openclaw 18789:18789
+
+# Run subcommands
+kubectl exec -n openclaw deployment/openclaw -- node dist/index.js devices list
+```
+
+</details>
+
+<details>
+<summary><b>Running Subcommands</b></summary>
+
+OpenClaw subcommands (e.g., `gateway restart`, `devices list`) are run via `kubectl exec`:
+
+```bash
+kubectl exec -n openclaw deployment/openclaw -- node dist/index.js <subcommand>
+```
+
+If you encounter permission errors, this is expected behavior. All containers run with a **read-only root filesystem**, non-root UID 1000, and all Linux capabilities dropped. These restrictions are intentional — OpenClaw processes untrusted input from messaging platforms and the hardened environment limits blast radius if compromised.
+
+Common causes of permission errors:
+- **Wrong command path**: Use `node dist/index.js`, not `node app/openclaw.mjs` (the latter is the image default but Helm overrides the entrypoint)
+- **Write attempts to read-only paths**: The container can only write to `/home/node/.openclaw` (PVC) and `/tmp` (emptyDir) — everything else is read-only
+
+To restart the gateway, use Kubernetes instead of subcommands:
+
+```bash
+kubectl rollout restart deployment/openclaw -n openclaw
 ```
 
 </details>
