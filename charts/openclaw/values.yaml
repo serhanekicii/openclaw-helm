@@ -411,6 +411,10 @@ app-template:
       # @schema type:boolean;default:true
       enabled: true
       data:
+        # Shell alias for interactive sessions (sourced by ~/.bashrc)
+        # @schema type:string
+        bash_aliases: |
+          alias openclaw='node /app/dist/index.js'
         # OpenClaw configuration - JSON5 format
         # Sensitive values use ${ENV_VAR} substitution from environment secret
         # @schema type:string
@@ -562,6 +566,18 @@ app-template:
         main:
           init-config:
             - path: /config
+              readOnly: true
+
+    # Shell alias file mounted from ConfigMap for interactive kubectl exec sessions
+    bash-aliases:
+      enabled: true
+      type: configMap
+      identifier: config
+      advancedMounts:
+        main:
+          main:
+            - path: /home/node/.bash_aliases
+              subPath: bash_aliases
               readOnly: true
 
     # Entire .openclaw directory as PVC

@@ -23,6 +23,9 @@
                                 "data": {
                                     "type": "object",
                                     "properties": {
+                                        "bash_aliases": {
+                                            "type": "string"
+                                        },
                                         "openclaw.json": {
                                             "type": "string"
                                         }
@@ -876,6 +879,47 @@
                 "persistence": {
                     "type": "object",
                     "properties": {
+                        "bash-aliases": {
+                            "type": "object",
+                            "properties": {
+                                "advancedMounts": {
+                                    "type": "object",
+                                    "properties": {
+                                        "main": {
+                                            "type": "object",
+                                            "properties": {
+                                                "main": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "path": {
+                                                                "type": "string"
+                                                            },
+                                                            "readOnly": {
+                                                                "type": "boolean"
+                                                            },
+                                                            "subPath": {
+                                                                "type": "string"
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "enabled": {
+                                    "type": "boolean"
+                                },
+                                "identifier": {
+                                    "type": "string"
+                                },
+                                "type": {
+                                    "type": "string"
+                                }
+                            }
+                        },
                         "config": {
                             "type": "object",
                             "properties": {
