@@ -25,8 +25,8 @@ annotations:
     fingerprint: 663862EB60C50E04AD73F198CA0FB121610B01FF
     url: https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x663862EB60C50E04AD73F198CA0FB121610B01FF
   artifacthub.io/changes: |
-    - kind: changed
-      description: "Switch Chromium sidecar to chromedp/headless-shell"
+    - kind: added
+      description: "Switch chromium sidecar to chromedp/headless-shell (#18)"
   artifacthub.io/images: |
     - name: openclaw
       image: ghcr.io/openclaw/openclaw:2026.2.26
