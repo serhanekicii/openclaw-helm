@@ -61,18 +61,6 @@
                                             "description": "Chromium sidecar for browser automation (CDP on port 9222)",
                                             "type": "object",
                                             "properties": {
-                                                "args": {
-                                                    "type": "array",
-                                                    "items": {
-                                                        "type": "string"
-                                                    }
-                                                },
-                                                "command": {
-                                                    "type": "array",
-                                                    "items": {
-                                                        "type": "string"
-                                                    }
-                                                },
                                                 "enabled": {
                                                     "description": "Enable/disable the Chromium browser sidecar",
                                                     "default": true,
@@ -91,7 +79,7 @@
                                                     "properties": {
                                                         "repository": {
                                                             "description": "Chromium image repository",
-                                                            "default": "zenika/alpine-chrome",
+                                                            "default": "chromedp/headless-shell",
                                                             "type": "string"
                                                         },
                                                         "tag": {
@@ -121,6 +109,19 @@
                                                                             "default": 6,
                                                                             "type": "integer"
                                                                         },
+                                                                        "httpGet": {
+                                                                            "type": "object",
+                                                                            "properties": {
+                                                                                "path": {
+                                                                                    "default": "/json/version",
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "port": {
+                                                                                    "default": 9222,
+                                                                                    "type": "integer"
+                                                                                }
+                                                                            }
+                                                                        },
                                                                         "initialDelaySeconds": {
                                                                             "default": 10,
                                                                             "type": "integer"
@@ -128,15 +129,6 @@
                                                                         "periodSeconds": {
                                                                             "default": 30,
                                                                             "type": "integer"
-                                                                        },
-                                                                        "tcpSocket": {
-                                                                            "type": "object",
-                                                                            "properties": {
-                                                                                "port": {
-                                                                                    "default": 9222,
-                                                                                    "type": "integer"
-                                                                                }
-                                                                            }
                                                                         },
                                                                         "timeoutSeconds": {
                                                                             "default": 5,
@@ -160,6 +152,19 @@
                                                                 "spec": {
                                                                     "type": "object",
                                                                     "properties": {
+                                                                        "httpGet": {
+                                                                            "type": "object",
+                                                                            "properties": {
+                                                                                "path": {
+                                                                                    "default": "/json/version",
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "port": {
+                                                                                    "default": 9222,
+                                                                                    "type": "integer"
+                                                                                }
+                                                                            }
+                                                                        },
                                                                         "initialDelaySeconds": {
                                                                             "default": 5,
                                                                             "type": "integer"
@@ -167,15 +172,6 @@
                                                                         "periodSeconds": {
                                                                             "default": 10,
                                                                             "type": "integer"
-                                                                        },
-                                                                        "tcpSocket": {
-                                                                            "type": "object",
-                                                                            "properties": {
-                                                                                "port": {
-                                                                                    "default": 9222,
-                                                                                    "type": "integer"
-                                                                                }
-                                                                            }
                                                                         }
                                                                     }
                                                                 }
@@ -199,6 +195,19 @@
                                                                             "default": 12,
                                                                             "type": "integer"
                                                                         },
+                                                                        "httpGet": {
+                                                                            "type": "object",
+                                                                            "properties": {
+                                                                                "path": {
+                                                                                    "default": "/json/version",
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "port": {
+                                                                                    "default": 9222,
+                                                                                    "type": "integer"
+                                                                                }
+                                                                            }
+                                                                        },
                                                                         "initialDelaySeconds": {
                                                                             "default": 5,
                                                                             "type": "integer"
@@ -206,15 +215,6 @@
                                                                         "periodSeconds": {
                                                                             "default": 5,
                                                                             "type": "integer"
-                                                                        },
-                                                                        "tcpSocket": {
-                                                                            "type": "object",
-                                                                            "properties": {
-                                                                                "port": {
-                                                                                    "default": 9222,
-                                                                                    "type": "integer"
-                                                                                }
-                                                                            }
                                                                         },
                                                                         "timeoutSeconds": {
                                                                             "default": 5,

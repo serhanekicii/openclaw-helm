@@ -11,7 +11,7 @@ app-template:
   openclawVersion: "2026.2.26"
   # @schema type:string
   # -- Chromium sidecar image version
-  chromiumVersion: "124"
+  chromiumVersion: "146.0.7680.31"
   # @schema type:string;enum:[merge, overwrite];default:merge
   # -- Config mode: `merge` preserves runtime changes, `overwrite` for strict GitOps
   configMode: merge
@@ -318,22 +318,12 @@ app-template:
           # -- Enable/disable the Chromium browser sidecar
           enabled: true
           image:
-            # @schema type:string;default:zenika/alpine-chrome
+            # @schema type:string;default:chromedp/headless-shell
             # -- Chromium image repository
-            repository: zenika/alpine-chrome
+            repository: chromedp/headless-shell
             # @schema type:string
             # -- Chromium image tag
             tag: "{{ .Values.chromiumVersion }}"
-          command:
-            - chromium-browser
-          args:
-            - --headless
-            - --disable-gpu
-            - --no-sandbox
-            - --disable-dev-shm-usage
-            - --remote-debugging-address=0.0.0.0
-            - --remote-debugging-port=9222
-            - --user-data-dir=/tmp/chromium
           env:
             # Fontconfig cache needs a writable directory
             XDG_CACHE_HOME: /tmp
@@ -364,7 +354,9 @@ app-template:
               # @schema type:boolean;default:true
               custom: true
               spec:
-                tcpSocket:
+                httpGet:
+                  # @schema type:string;default:/json/version
+                  path: /json/version
                   # @schema type:integer;default:9222
                   port: 9222
                 # @schema type:integer;default:10
@@ -381,7 +373,9 @@ app-template:
               # @schema type:boolean;default:true
               custom: true
               spec:
-                tcpSocket:
+                httpGet:
+                  # @schema type:string;default:/json/version
+                  path: /json/version
                   # @schema type:integer;default:9222
                   port: 9222
                 # @schema type:integer;default:5
@@ -394,7 +388,9 @@ app-template:
               # @schema type:boolean;default:true
               custom: true
               spec:
-                tcpSocket:
+                httpGet:
+                  # @schema type:string;default:/json/version
+                  path: /json/version
                   # @schema type:integer;default:9222
                   port: 9222
                 # @schema type:integer;default:5

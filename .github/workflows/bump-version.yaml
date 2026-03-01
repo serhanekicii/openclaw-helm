@@ -10,7 +10,7 @@ on:
         required: false
         type: string
       chromium_version:
-        description: "Chromium image tag (e.g., 124). Leave empty to skip chromium update."
+        description: "Chromium image tag (e.g., 146.0.7680.31). Leave empty to auto-detect latest stable."
         required: false
         type: string
       chart_bump:
@@ -66,6 +66,32 @@ jobs:
           echo "Current app version: $app_version"
           echo "Current chromium version: $chromium_version"
 
+      - name: Get latest Chromium version
+        id: get-chromium
+        run: |
+          if [ -n "${{ inputs.chromium_version }}" ]; then
+            version="${{ inputs.chromium_version }}"
+          else
+            echo "Auto-detecting latest stable chromedp/headless-shell version..."
+            stable_digest=$(curl -s "https://hub.docker.com/v2/repositories/chromedp/headless-shell/tags/?page_size=1&name=stable" \
+              | jq -r '.results[0].digest')
+            if [ -z "$stable_digest" ] || [ "$stable_digest" = "null" ]; then
+              echo "::warning::Could not fetch stable digest, skipping chromium update"
+              echo "version=" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            version=$(curl -s "https://hub.docker.com/v2/repositories/chromedp/headless-shell/tags/?page_size=50&ordering=last_updated" \
+              | jq -r --arg d "$stable_digest" \
+                '[.results[] | select(.digest==$d) | .name | select(test("^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$"))][0]')
+            if [ -z "$version" ] || [ "$version" = "null" ]; then
+              echo "::warning::Could not resolve stable digest to a version tag, skipping chromium update"
+              echo "version=" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Chromium version: $version"
+
       - name: Check if update needed
         id: check
         run: |
@@ -77,7 +103,7 @@ jobs:
             openclaw_changed=true
             echo "OpenClaw version changed"
           fi
-          if [ -n "${{ inputs.chromium_version }}" ] && [ "${{ inputs.chromium_version }}" != "${{ steps.current.outputs.chromium_version }}" ]; then
+          if [ -n "${{ steps.get-chromium.outputs.version }}" ] && [ "${{ steps.get-chromium.outputs.version }}" != "${{ steps.current.outputs.chromium_version }}" ]; then
             skip=false
             chromium_changed=true
             echo "Chromium version changed"
@@ -147,15 +173,13 @@ jobs:
           sed -i "s|ghcr.io/openclaw/openclaw:${old_version}|ghcr.io/openclaw/openclaw:${version}|g" charts/openclaw/Chart.yaml
 
       - name: Update chromium version
-        if: steps.check.outputs.skip != 'true' && inputs.chromium_version != ''
+        if: steps.check.outputs.skip != 'true' && steps.check.outputs.chromium_changed == 'true'
         run: |
-          new_chromium="${{ inputs.chromium_version }}"
+          new_chromium="${{ steps.get-chromium.outputs.version }}"
           old_chromium="${{ steps.current.outputs.chromium_version }}"
-          if [ "$new_chromium" != "$old_chromium" ]; then
-            sed -i "s/chromiumVersion: \"${old_chromium}\"/chromiumVersion: \"${new_chromium}\"/" charts/openclaw/values.yaml
-            sed -i "s|zenika/alpine-chrome:${old_chromium}|zenika/alpine-chrome:${new_chromium}|g" charts/openclaw/Chart.yaml
-            echo "Updated chromium: ${old_chromium} -> ${new_chromium}"
-          fi
+          sed -i "s/chromiumVersion: \"${old_chromium}\"/chromiumVersion: \"${new_chromium}\"/" charts/openclaw/values.yaml
+          sed -i "s|chromedp/headless-shell:${old_chromium}|chromedp/headless-shell:${new_chromium}|g" charts/openclaw/Chart.yaml
+          echo "Updated chromium: ${old_chromium} -> ${new_chromium}"
 
       - name: Update ArtifactHub changelog
         if: steps.check.outputs.skip != 'true'
@@ -165,7 +189,7 @@ jobs:
             changelog="${changelog}- kind: changed\n  description: \"Bump OpenClaw to ${{ steps.get-version.outputs.version }}\"\n"
           fi
           if [ "${{ steps.check.outputs.chromium_changed }}" = "true" ]; then
-            changelog="${changelog}- kind: changed\n  description: \"Bump Chromium to ${{ inputs.chromium_version }}\"\n"
+            changelog="${changelog}- kind: changed\n  description: \"Bump Chromium to ${{ steps.get-chromium.outputs.version }}\"\n"
           fi
           if [ -n "$changelog" ]; then
             printf "%b" "$changelog" > /tmp/changelog.yaml
@@ -213,9 +237,9 @@ jobs:
           fi
           if [ "${{ steps.check.outputs.chromium_changed }}" = "true" ]; then
             if [ -n "$parts" ]; then
-              parts="$parts, chromium to ${{ inputs.chromium_version }}"
+              parts="$parts, chromium to ${{ steps.get-chromium.outputs.version }}"
             else
-              parts="chromium to ${{ inputs.chromium_version }}"
+              parts="chromium to ${{ steps.get-chromium.outputs.version }}"
             fi
           fi
           git commit -m "chore: bump $parts"
@@ -275,6 +299,6 @@ jobs:
           echo "::notice::Dry run - no changes committed"
           echo "Would bump OpenClaw to ${{ steps.get-version.outputs.version }}"
           echo "Would bump chart version to ${{ steps.new-version.outputs.new_version }}"
-          if [ -n "${{ inputs.chromium_version }}" ]; then
-            echo "Would bump chromium to ${{ inputs.chromium_version }}"
+          if [ "${{ steps.check.outputs.chromium_changed }}" = "true" ]; then
+            echo "Would bump chromium to ${{ steps.get-chromium.outputs.version }}"
           fi
