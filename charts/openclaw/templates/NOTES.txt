@@ -15,7 +15,8 @@ OpenClaw has been deployed!
 
 3. Approve the pairing request:
 
-   kubectl exec -n {{ .Release.Namespace }} deployment/{{ .Release.Name }} -- node dist/index.js devices list
-   kubectl exec -n {{ .Release.Namespace }} deployment/{{ .Release.Name }} -- node dist/index.js devices approve <REQUEST_ID>
+   kubectl exec -n {{ .Release.Namespace }} deployment/{{ .Release.Name }} -c main -- node dist/index.js devices list
+   kubectl exec -n {{ .Release.Namespace }} deployment/{{ .Release.Name }} -c main -- node dist/index.js devices approve <REQUEST_ID>
+
 
 Documentation: https://serhanekici.com/openclaw-helm.html
