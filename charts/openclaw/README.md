@@ -85,8 +85,8 @@ kubectl port-forward -n openclaw svc/openclaw 18789:18789
 # Open http://localhost:18789, enter your Gateway Token, click Connect
 
 # Approve the pairing request
-kubectl exec -n openclaw deployment/openclaw -- node dist/index.js devices list
-kubectl exec -n openclaw deployment/openclaw -- node dist/index.js devices approve <REQUEST_ID>
+kubectl exec -n openclaw deployment/openclaw -c main -- node dist/index.js devices list
+kubectl exec -n openclaw deployment/openclaw -c main -- node dist/index.js devices approve <REQUEST_ID>
 ```
 
 ---
