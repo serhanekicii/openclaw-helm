@@ -8,7 +8,7 @@
 app-template:
   # @schema type:string;required:true
   # -- OpenClaw image version (used by all OpenClaw containers)
-  openclawVersion: "2026.2.26"
+  openclawVersion: "2026.3.1"
   # @schema type:string
   # -- Chromium sidecar image version
   chromiumVersion: "146.0.7680.31"
@@ -178,15 +178,37 @@ app-template:
               # Add skill slugs to the list below to install them declaratively.
               mkdir -p /home/node/.openclaw/workspace/skills
               cd /home/node/.openclaw/workspace
-              for skill in weather; do
-                if [ -n "$skill" ] && [ ! -d "skills/${skill##*/}" ]; then
-                  log "Installing skill: $skill"
-                  if ! npx -y clawhub install "$skill" --no-input; then
-                    log "WARNING: Failed to install skill: $skill"
-                  fi
-                else
-                  log "Skill already installed: $skill"
+              install_skill() {
+                skill="$1"
+                SKILL_NAME="$(basename "$skill")"
+                if [ -z "$skill" ]; then
+                  return 0
                 fi
+                if [ -d "skills/$SKILL_NAME" ]; then
+                  log "Skill already installed: $skill"
+                  return 0
+                fi
+                log "Installing skill: $skill"
+                attempts=6
+                delay=5
+                for i in $(seq 1 "$attempts"); do
+                  if npx -y clawhub install "$skill" --no-input; then
+                    log "Installed skill: $skill"
+                    return 0
+                  fi
+                  # Add a little jitter so concurrent pods don't retry in lockstep.
+                  jitter=$((RANDOM % 5))
+                  if [ "$i" -lt "$attempts" ]; then
+                    log "WARNING: Failed to install skill: $skill (attempt $i/$attempts). Retrying in $((delay + jitter))s..."
+                    sleep $((delay + jitter))
+                    delay=$((delay * 2))
+                  fi
+                done
+                log "WARNING: Failed to install skill after $attempts attempts: $skill"
+                return 1
+              }
+              for skill in weather gog; do
+                install_skill "$skill" || true
               done
               log "Skills initialization complete"
           env:
