@@ -2,8 +2,8 @@ apiVersion: v2
 name: openclaw
 description: Helm chart for deploying OpenClaw on Kubernetes — an AI assistant that connects to messaging platforms and executes tasks autonomously.
 type: application
-version: 1.4.0
-appVersion: "2026.2.26"
+version: 1.4.1
+appVersion: "2026.3.1"
 kubeVersion: ">=1.26.0-0"
 icon: https://raw.githubusercontent.com/openclaw/openclaw/main/docs/assets/openclaw-logo-text.png
 keywords:
@@ -25,11 +25,11 @@ annotations:
     fingerprint: 663862EB60C50E04AD73F198CA0FB121610B01FF
     url: https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x663862EB60C50E04AD73F198CA0FB121610B01FF
   artifacthub.io/changes: |
-    - kind: added
-      description: "Switch chromium sidecar to chromedp/headless-shell (#18)"
+    - kind: changed
+      description: "Bump OpenClaw to 2026.3.1"
   artifacthub.io/images: |
     - name: openclaw
-      image: ghcr.io/openclaw/openclaw:2026.2.26
+      image: ghcr.io/openclaw/openclaw:2026.3.1
     - name: chromium
       image: chromedp/headless-shell:146.0.7680.31
   artifacthub.io/license: MIT
