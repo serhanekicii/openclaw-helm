@@ -87,8 +87,8 @@ kubectl port-forward -n {{ .Name }} svc/{{ .Name }} 18789:18789
 # Open http://localhost:18789, enter your Gateway Token, click Connect
 
 # Approve the pairing request
-kubectl exec -n {{ .Name }} deployment/{{ .Name }} -- node dist/index.js devices list
-kubectl exec -n {{ .Name }} deployment/{{ .Name }} -- node dist/index.js devices approve <REQUEST_ID>
+kubectl exec -n {{ .Name }} deployment/{{ .Name }} -c main -- node dist/index.js devices list
+kubectl exec -n {{ .Name }} deployment/{{ .Name }} -c main -- node dist/index.js devices approve <REQUEST_ID>
 ```
 
 ---
