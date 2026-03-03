@@ -5,6 +5,55 @@ entries:
       artifacthub.io/category: ai-machine-learning
       artifacthub.io/changes: |
         - kind: changed
+          description: "Bump OpenClaw to 2026.3.2"
+      artifacthub.io/images: |
+        - name: openclaw
+          image: ghcr.io/openclaw/openclaw:2026.3.2
+        - name: chromium
+          image: chromedp/headless-shell:146.0.7680.31
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: Documentation
+          url: https://serhanekici.com/openclaw-helm.html
+        - name: Source
+          url: https://github.com/serhanekicii/openclaw-helm
+      artifacthub.io/signKey: |
+        fingerprint: 663862EB60C50E04AD73F198CA0FB121610B01FF
+        url: https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x663862EB60C50E04AD73F198CA0FB121610B01FF
+    apiVersion: v2
+    appVersion: 2026.3.2
+    created: "2026-03-03T07:01:13.802949928Z"
+    dependencies:
+    - name: app-template
+      repository: https://bjw-s-labs.github.io/helm-charts/
+      version: 4.6.2
+    description: Helm chart for deploying OpenClaw on Kubernetes — an AI assistant
+      that connects to messaging platforms and executes tasks autonomously.
+    digest: aedbbee749e2c5c48bcdc424542379d90f5c5966fc7b61bda7f5263c5808ff10
+    home: https://github.com/openclaw/openclaw
+    icon: https://raw.githubusercontent.com/openclaw/openclaw/main/docs/assets/openclaw-logo-text.png
+    keywords:
+    - ai
+    - assistant
+    - chatbot
+    - automation
+    - kubernetes
+    kubeVersion: '>=1.26.0-0'
+    maintainers:
+    - name: Serhan Ekici
+      url: https://serhanekici.com
+    name: openclaw
+    sources:
+    - https://github.com/serhanekicii/openclaw-helm
+    - https://serhanekici.com/openclaw-helm.html
+    type: application
+    urls:
+    - https://github.com/serhanekicii/openclaw-helm/releases/download/openclaw-1.4.4/openclaw-1.4.4.tgz
+    version: 1.4.4
+  - annotations:
+      artifacthub.io/category: ai-machine-learning
+      artifacthub.io/changes: |
+        - kind: changed
           description: "Update commands to specify main container (#19)"
       artifacthub.io/images: |
         - name: openclaw
@@ -1430,4 +1479,4 @@ entries:
     urls:
     - https://github.com/serhanekicii/openclaw-helm/releases/download/openclaw-1.0.0/openclaw-1.0.0.tgz
     version: 1.0.0
-generated: "2026-03-02T11:55:15.25947114Z"
+generated: "2026-03-03T07:01:13.803181974Z"
