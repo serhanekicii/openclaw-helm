@@ -148,7 +148,7 @@ jobs:
 
       - name: Login to GitHub Container Registry
         if: steps.cr.outputs.changed_charts
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
