@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "OpenClaw version (e.g., 2026.1.30). Leave empty to fetch latest."
+        description: "OpenClaw image tag (e.g., 2026.1.30-1). Leave empty to auto-detect from GHCR."
         required: false
         type: string
       chromium_version:
@@ -48,7 +48,32 @@ jobs:
           if [ -n "${{ inputs.version }}" ]; then
             version="${{ inputs.version }}"
           else
-            version=$(gh api repos/openclaw/openclaw/releases/latest --jq '.tag_name' | sed 's/^v//')
+            # Resolve the actual image tag from GHCR by finding which version
+            # tag shares the same digest as 'latest'. GitHub releases may not
+            # match published image tags (e.g., release 2026.3.13 exists but
+            # the image is tagged 2026.3.13-1).
+            latest_digest=$(gh api \
+              /orgs/openclaw/packages/container/openclaw/versions \
+              --paginate --jq '.[] | select(.metadata.container.tags | index("latest")) | .name')
+
+            if [ -z "$latest_digest" ]; then
+              echo "::error::Could not resolve 'latest' image digest from GHCR"
+              exit 1
+            fi
+            echo "Latest image digest: $latest_digest"
+
+            # Find the version tag (YYYY.M.D or YYYY.M.D-N format) on the same digest
+            version=$(gh api \
+              /orgs/openclaw/packages/container/openclaw/versions \
+              --paginate \
+              | jq -r --arg d "$latest_digest" \
+              '.[] | select(.name == $d) | .metadata.container.tags[] | select(test("^[0-9]{4}\\.[0-9]{1,2}\\.[0-9]{1,2}(-[0-9]+)?$"))' \
+              | head -1)
+
+            if [ -z "$version" ]; then
+              echo "::error::Could not find a version tag for the 'latest' image digest"
+              exit 1
+            fi
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "OpenClaw version: $version"
