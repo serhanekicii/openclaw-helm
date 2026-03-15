@@ -4,6 +4,55 @@ entries:
   - annotations:
       artifacthub.io/category: ai-machine-learning
       artifacthub.io/changes: |
+        - kind: changed
+          description: "Bump Chromium to 146.0.7680.80"
+      artifacthub.io/images: |
+        - name: openclaw
+          image: ghcr.io/openclaw/openclaw:2026.3.13-1
+        - name: chromium
+          image: chromedp/headless-shell:146.0.7680.80
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: Documentation
+          url: https://serhanekici.com/openclaw-helm.html
+        - name: Source
+          url: https://github.com/serhanekicii/openclaw-helm
+      artifacthub.io/signKey: |
+        fingerprint: 663862EB60C50E04AD73F198CA0FB121610B01FF
+        url: https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x663862EB60C50E04AD73F198CA0FB121610B01FF
+    apiVersion: v2
+    appVersion: 2026.3.13-1
+    created: "2026-03-15T07:07:52.499085719Z"
+    dependencies:
+    - name: app-template
+      repository: https://bjw-s-labs.github.io/helm-charts/
+      version: 4.6.2
+    description: Helm chart for deploying OpenClaw on Kubernetes — an AI assistant
+      that connects to messaging platforms and executes tasks autonomously.
+    digest: 3b48350b96fd8abc40ea156e23c6ded1a33b632c56d8e0f38ee3997f3c93e796
+    home: https://github.com/openclaw/openclaw
+    icon: https://raw.githubusercontent.com/openclaw/openclaw/main/docs/assets/openclaw-logo-text.png
+    keywords:
+    - ai
+    - assistant
+    - chatbot
+    - automation
+    - kubernetes
+    kubeVersion: '>=1.26.0-0'
+    maintainers:
+    - name: Serhan Ekici
+      url: https://serhanekici.com
+    name: openclaw
+    sources:
+    - https://github.com/serhanekicii/openclaw-helm
+    - https://serhanekici.com/openclaw-helm.html
+    type: application
+    urls:
+    - https://github.com/serhanekicii/openclaw-helm/releases/download/openclaw-1.5.4/openclaw-1.5.4.tgz
+    version: 1.5.4
+  - annotations:
+      artifacthub.io/category: ai-machine-learning
+      artifacthub.io/changes: |
         - kind: fixed
           description: "Use query-string shields.io badge for app version"
       artifacthub.io/images: |
@@ -1971,4 +2020,4 @@ entries:
     urls:
     - https://github.com/serhanekicii/openclaw-helm/releases/download/openclaw-1.0.0/openclaw-1.0.0.tgz
     version: 1.0.0
-generated: "2026-03-14T18:03:58.68182309Z"
+generated: "2026-03-15T07:07:52.499377633Z"
