@@ -3,8 +3,8 @@
 [![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/openclaw-helm)](https://artifacthub.io/packages/helm/openclaw-helm/openclaw)
 [![Helm 3](https://img.shields.io/badge/Helm-3.0+-0f1689?logo=helm&logoColor=white)](https://helm.sh/)
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-1.26+-326ce5?logo=kubernetes&logoColor=white)](https://kubernetes.io/)
-[![App Version](https://img.shields.io/static/v1?label=App+Version&message=2026.3.23-2&color=blue)](https://github.com/openclaw/openclaw)
-[![Chart Version](https://img.shields.io/badge/Chart_Version-1.5.6-blue)](https://github.com/serhanekicii/openclaw-helm)
+[![App Version](https://img.shields.io/static/v1?label=App+Version&message=2026.3.24&color=blue)](https://github.com/openclaw/openclaw)
+[![Chart Version](https://img.shields.io/badge/Chart_Version-1.5.7-blue)](https://github.com/serhanekicii/openclaw-helm)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 Helm chart for deploying OpenClaw on Kubernetes — an AI assistant that connects to messaging platforms and executes tasks autonomously.
@@ -22,7 +22,7 @@ OpenClaw runs as a single-instance deployment (cannot scale horizontally):
 | Gateway | 18789 | Main HTTP/WebSocket interface |
 | Chromium | 9222 | Headless browser for automation (CDP, optional) |
 
-**App Version:** 2026.3.23-2
+**App Version:** 2026.3.24
 
 ---
 
@@ -104,7 +104,7 @@ app-template:
         main:
           image:
             repository: ghcr.io/your-org/openclaw-fork
-            tag: "2026.3.23-2"
+            tag: "2026.3.24"
 ```
 
 For images hosted in a private registry inside your cluster:
@@ -117,7 +117,7 @@ app-template:
         main:
           image:
             repository: registry.internal/openclaw
-            tag: "2026.3.23-2"
+            tag: "2026.3.24"
             pullPolicy: Always
 ```
 
@@ -145,7 +145,7 @@ All values are nested under `app-template:`. See [values.yaml](values.yaml) for 
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| app-template.chromiumVersion | string | `"146.0.7680.154"` | Chromium sidecar image version |
+| app-template.chromiumVersion | string | `"147.0.7727.24"` | Chromium sidecar image version |
 | app-template.configMaps.config.data."openclaw.json" | string | `"{\n  // Gateway configuration\n  \"gateway\": {\n    \"port\": 18789,\n    \"mode\": \"local\",\n    // IMPORTANT: trustedProxies uses exact IP matching only\n    // - CIDR notation is NOT supported - list each proxy IP individually\n    // - IPv6 exact addresses may work but are untested\n    // - Recommend single-stack IPv4 deployments for simplicity\n    \"trustedProxies\": [\"10.0.0.1\"]\n  },\n\n  // Browser configuration (Chromium sidecar)\n  \"browser\": {\n    \"enabled\": true,\n    \"defaultProfile\": \"default\",\n    \"profiles\": {\n      \"default\": {\n        \"cdpUrl\": \"http://localhost:9222\",\n        \"color\": \"#4285F4\"\n      }\n    }\n  },\n\n  // Agent configuration\n  \"agents\": {\n    \"defaults\": {\n      \"workspace\": \"/home/node/.openclaw/workspace\",\n      \"model\": {\n        // Uses ANTHROPIC_API_KEY from environment\n        \"primary\": \"anthropic/claude-opus-4-6\"\n      },\n      \"userTimezone\": \"UTC\",\n      \"timeoutSeconds\": 600,\n      \"maxConcurrent\": 1\n    },\n    \"list\": [\n      {\n        \"id\": \"main\",\n        \"default\": true,\n        \"identity\": {\n          \"name\": \"OpenClaw\",\n          \"emoji\": \"🦞\"\n        }\n      }\n    ]\n  },\n\n  // Session management\n  \"session\": {\n    \"scope\": \"per-sender\",\n    \"store\": \"/home/node/.openclaw/sessions\",\n    \"reset\": {\n      \"mode\": \"idle\",\n      \"idleMinutes\": 60\n    }\n  },\n\n  // Logging\n  \"logging\": {\n    \"level\": \"info\",\n    \"consoleLevel\": \"info\",\n    \"consoleStyle\": \"compact\",\n    \"redactSensitive\": \"tools\"\n  },\n\n  // Tools configuration\n  \"tools\": {\n    \"profile\": \"full\",\n    \"web\": {\n      \"search\": {\n        \"enabled\": false\n      },\n      \"fetch\": {\n        \"enabled\": true\n      }\n    }\n  }\n\n  // Channel configuration can be added here:\n  // \"channels\": {\n  //   \"telegram\": {\n  //     \"botToken\": \"${TELEGRAM_BOT_TOKEN}\",\n  //     \"enabled\": true\n  //   },\n  //   \"discord\": {\n  //     \"token\": \"${DISCORD_BOT_TOKEN}\"\n  //   },\n  //   \"slack\": {\n  //     \"botToken\": \"${SLACK_BOT_TOKEN}\",\n  //     \"appToken\": \"${SLACK_APP_TOKEN}\"\n  //   }\n  // }\n}\n"` |  |
 | app-template.configMaps.config.data.bash_aliases | string | `"alias openclaw='node /app/dist/index.js'\n"` |  |
 | app-template.configMaps.config.enabled | bool | `true` |  |
@@ -203,7 +203,7 @@ All values are nested under `app-template:`. See [values.yaml](values.yaml) for 
 | app-template.networkpolicies.main.rules.ingress[0].from[0].namespaceSelector.matchLabels."kubernetes.io/metadata.name" | string | `"gateway-system"` |  |
 | app-template.networkpolicies.main.rules.ingress[0].ports[0].port | int | `18789` |  |
 | app-template.networkpolicies.main.rules.ingress[0].ports[0].protocol | string | `"TCP"` |  |
-| app-template.openclawVersion | string | `"2026.3.23-2"` | OpenClaw image version (used by all OpenClaw containers) |
+| app-template.openclawVersion | string | `"2026.3.24"` | OpenClaw image version (used by all OpenClaw containers) |
 | app-template.persistence.bash-aliases.advancedMounts.main.main[0].path | string | `"/home/node/.bash_aliases"` |  |
 | app-template.persistence.bash-aliases.advancedMounts.main.main[0].readOnly | bool | `true` |  |
 | app-template.persistence.bash-aliases.advancedMounts.main.main[0].subPath | string | `"bash_aliases"` |  |
