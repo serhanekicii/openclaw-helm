@@ -4,7 +4,7 @@
 [![Helm 3](https://img.shields.io/badge/Helm-3.0+-0f1689?logo=helm&logoColor=white)](https://helm.sh/)
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-1.26+-326ce5?logo=kubernetes&logoColor=white)](https://kubernetes.io/)
 [![App Version](https://img.shields.io/static/v1?label=App+Version&message=2026.3.28&color=blue)](https://github.com/openclaw/openclaw)
-[![Chart Version](https://img.shields.io/badge/Chart_Version-1.5.8-blue)](https://github.com/serhanekicii/openclaw-helm)
+[![Chart Version](https://img.shields.io/badge/Chart_Version-1.5.9-blue)](https://github.com/serhanekicii/openclaw-helm)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 Helm chart for deploying OpenClaw on Kubernetes — an AI assistant that connects to messaging platforms and executes tasks autonomously.
