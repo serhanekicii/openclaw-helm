@@ -36,6 +36,25 @@
                                     "type": "boolean"
                                 }
                             }
+                        },
+                        "scripts": {
+                            "type": "object",
+                            "properties": {
+                                "data": {
+                                    "type": "object",
+                                    "properties": {
+                                        "init-config.sh": {
+                                            "type": "string"
+                                        },
+                                        "init-skills.sh": {
+                                            "type": "string"
+                                        }
+                                    }
+                                },
+                                "enabled": {
+                                    "type": "boolean"
+                                }
+                            }
                         }
                     }
                 },
@@ -621,6 +640,9 @@
                                                         },
                                                         "NPM_CONFIG_CACHE": {
                                                             "type": "string"
+                                                        },
+                                                        "SKILLS_TO_INSTALL": {
+                                                            "type": "string"
                                                         }
                                                     }
                                                 },
@@ -1032,6 +1054,58 @@
                                 }
                             }
                         },
+                        "scripts": {
+                            "type": "object",
+                            "properties": {
+                                "advancedMounts": {
+                                    "type": "object",
+                                    "properties": {
+                                        "main": {
+                                            "type": "object",
+                                            "properties": {
+                                                "init-config": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "path": {
+                                                                "type": "string"
+                                                            },
+                                                            "readOnly": {
+                                                                "type": "boolean"
+                                                            }
+                                                        }
+                                                    }
+                                                },
+                                                "init-skills": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "path": {
+                                                                "type": "string"
+                                                            },
+                                                            "readOnly": {
+                                                                "type": "boolean"
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "enabled": {
+                                    "type": "boolean"
+                                },
+                                "identifier": {
+                                    "type": "string"
+                                },
+                                "type": {
+                                    "type": "string"
+                                }
+                            }
+                        },
                         "tmp": {
                             "type": "object",
                             "properties": {
@@ -1143,6 +1217,13 @@
                                 }
                             }
                         }
+                    }
+                },
+                "skills": {
+                    "description": "ClawHub skills to install on startup. Set to [] to skip skill installation.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
                     }
                 }
             }

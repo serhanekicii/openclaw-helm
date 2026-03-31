@@ -15,6 +15,11 @@ app-template:
   # @schema type:string;enum:[merge, overwrite];default:merge
   # -- Config mode: `merge` preserves runtime changes, `overwrite` for strict GitOps
   configMode: merge
+  # @schema type:array
+  # -- ClawHub skills to install on startup. Set to [] to skip skill installation.
+  skills:
+    - weather
+    - gog
 
   defaultPodOptions:
     # -- Pod security context
@@ -43,73 +48,9 @@ app-template:
             # @schema type:string
             tag: "{{ .Values.openclawVersion }}"
           # -- Init-config startup script
-          # @default -- See values.yaml
           command:
             - sh
-            - -c
-            - |
-              log() { echo "[$(date -Iseconds)] [init-config] $*"; }
-
-              log "Starting config initialization"
-              mkdir -p /home/node/.openclaw
-              CONFIG_MODE="${CONFIG_MODE:-merge}"
-
-              if [ "$CONFIG_MODE" = "merge" ] && [ -f /home/node/.openclaw/openclaw.json ]; then
-                log "Mode: merge - merging Helm config with existing config"
-                if node -e "
-                  const fs = require('fs');
-                  // Strip JSON5 single-line comments while preserving // inside strings (e.g. URLs)
-                  const stripComments = (s) => {
-                    let r = '', q = false, i = 0;
-                    while (i < s.length) {
-                      if (q) {
-                        if (s[i] === '\\\\') { r += s[i] + s[i+1]; i += 2; continue; }
-                        if (s[i] === '\"') q = false;
-                        r += s[i++];
-                      } else if (s[i] === '\"') {
-                        q = true; r += s[i++];
-                      } else if (s[i] === '/' && s[i+1] === '/') {
-                        while (i < s.length && s[i] !== '\n') i++;
-                      } else { r += s[i++]; }
-                    }
-                    return r;
-                  };
-                  let existing;
-                  try {
-                    existing = JSON.parse(stripComments(fs.readFileSync('/home/node/.openclaw/openclaw.json', 'utf8')));
-                  } catch (e) {
-                    console.error('[init-config] Warning: existing config is not valid JSON, will overwrite');
-                    process.exit(1);
-                  }
-                  const helm = JSON.parse(stripComments(fs.readFileSync('/config/openclaw.json', 'utf8')));
-                  const deepMerge = (target, source) => {
-                    for (const key of Object.keys(source)) {
-                      if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
-                        target[key] = target[key] || {};
-                        deepMerge(target[key], source[key]);
-                      } else {
-                        target[key] = source[key];
-                      }
-                    }
-                    return target;
-                  };
-                  const merged = deepMerge(existing, helm);
-                  fs.writeFileSync('/home/node/.openclaw/openclaw.json', JSON.stringify(merged, null, 2));
-                "; then
-                  log "Config merged successfully"
-                else
-                  log "WARNING: Merge failed (existing config may not be valid JSON), falling back to overwrite"
-                  cp /config/openclaw.json /home/node/.openclaw/openclaw.json
-                fi
-              else
-                if [ ! -f /home/node/.openclaw/openclaw.json ]; then
-                  log "Fresh install - writing initial config"
-                else
-                  log "Mode: overwrite - replacing config with Helm values"
-                fi
-                cp /config/openclaw.json /home/node/.openclaw/openclaw.json
-              fi
-              log "Config initialization complete"
+            - /scripts/init-config.sh
           env:
             CONFIG_MODE: "{{ .Values.configMode | default \"merge\" }}"
           securityContext:
@@ -131,87 +72,12 @@ app-template:
             # @schema type:string
             tag: "{{ .Values.openclawVersion }}"
           # -- Init-skills startup script
-          # @default -- See values.yaml
           command:
             - sh
-            - -c
-            - |
-              log() { echo "[$(date -Iseconds)] [init-skills] $*"; }
-
-              log "Starting skills initialization"
-
-              # ============================================================
-              # Runtime Dependencies
-              # ============================================================
-              # Some skills require additional runtimes (Python, Go, etc.)
-              # Install them here so they persist across pod restarts.
-              #
-              # Example: Install uv (Python package manager) for Python skills
-              # mkdir -p /home/node/.openclaw/bin
-              # if [ ! -f /home/node/.openclaw/bin/uv ]; then
-              #   log "Installing uv..."
-              #   curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/home/node/.openclaw/bin sh
-              # fi
-              #
-              # Example: Install pnpm and packages for interfaces (e.g., MS Teams)
-              # The read-only filesystem and non-root UID prevent writing to default
-              # pnpm paths (/usr/local/lib/node_modules, ~/.local/share/pnpm, etc.).
-              # Redirect PNPM_HOME to the PVC so the binary persists across restarts.
-              # The init container's HOME=/tmp ensures pnpm's cache, state, and config
-              # writes land on /tmp (writable emptyDir). The store goes on the PVC so
-              # hardlinks work (same filesystem as node_modules) and persist.
-              # PNPM_HOME=/home/node/.openclaw/pnpm
-              # mkdir -p "$PNPM_HOME"
-              # if [ ! -f "$PNPM_HOME/pnpm" ]; then
-              #   log "Installing pnpm..."
-              #   curl -fsSL https://get.pnpm.io/install.sh | env PNPM_HOME="$PNPM_HOME" SHELL=/bin/sh sh -
-              # fi
-              # export PATH="$PNPM_HOME:$PATH"
-              # log "Installing interface dependencies..."
-              # cd /home/node/.openclaw
-              # pnpm install <your-package> --store-dir /home/node/.openclaw/.pnpm-store
-
-              # ============================================================
-              # Skill Installation
-              # ============================================================
-              # Install skills from ClawHub (https://clawhub.com)
-              # Add skill slugs to the list below to install them declaratively.
-              mkdir -p /home/node/.openclaw/workspace/skills
-              cd /home/node/.openclaw/workspace
-              install_skill() {
-                skill="$1"
-                SKILL_NAME="$(basename "$skill")"
-                if [ -z "$skill" ]; then
-                  return 0
-                fi
-                if [ -d "skills/$SKILL_NAME" ]; then
-                  log "Skill already installed: $skill"
-                  return 0
-                fi
-                log "Installing skill: $skill"
-                attempts=6
-                delay=5
-                for i in $(seq 1 "$attempts"); do
-                  if npx -y clawhub install "$skill" --no-input; then
-                    log "Installed skill: $skill"
-                    return 0
-                  fi
-                  # Add a little jitter so concurrent pods don't retry in lockstep.
-                  jitter=$((RANDOM % 5))
-                  if [ "$i" -lt "$attempts" ]; then
-                    log "WARNING: Failed to install skill: $skill (attempt $i/$attempts). Retrying in $((delay + jitter))s..."
-                    sleep $((delay + jitter))
-                    delay=$((delay * 2))
-                  fi
-                done
-                log "WARNING: Failed to install skill after $attempts attempts: $skill"
-                return 1
-              }
-              for skill in weather gog; do
-                install_skill "$skill" || true
-              done
-              log "Skills initialization complete"
+            - /scripts/init-skills.sh
           env:
+            # @schema type:string
+            SKILLS_TO_INSTALL: '{{ .Values.skills | join " " }}'
             HOME: /tmp
             NPM_CONFIG_CACHE: /tmp/.npm
           securityContext:
@@ -425,6 +291,150 @@ app-template:
                 failureThreshold: 12
 
   configMaps:
+    scripts:
+      enabled: true
+      data:
+        init-config.sh: |
+          log() { echo "[$(date -Iseconds)] [init-config] $*"; }
+
+          log "Starting config initialization"
+          mkdir -p /home/node/.openclaw
+          CONFIG_MODE="${CONFIG_MODE:-merge}"
+
+          if [ "$CONFIG_MODE" = "merge" ] && [ -f /home/node/.openclaw/openclaw.json ]; then
+            log "Mode: merge - merging Helm config with existing config"
+            if node -e "
+              const fs = require('fs');
+              // Strip JSON5 single-line comments while preserving // inside strings (e.g. URLs)
+              const stripComments = (s) => {
+                let r = '', q = false, i = 0;
+                while (i < s.length) {
+                  if (q) {
+                    if (s[i] === '\\\\') { r += s[i] + s[i+1]; i += 2; continue; }
+                    if (s[i] === '\"') q = false;
+                    r += s[i++];
+                  } else if (s[i] === '\"') {
+                    q = true; r += s[i++];
+                  } else if (s[i] === '/' && s[i+1] === '/') {
+                    while (i < s.length && s[i] !== '\n') i++;
+                  } else { r += s[i++]; }
+                }
+                return r;
+              };
+              let existing;
+              try {
+                existing = JSON.parse(stripComments(fs.readFileSync('/home/node/.openclaw/openclaw.json', 'utf8')));
+              } catch (e) {
+                console.error('[init-config] Warning: existing config is not valid JSON, will overwrite');
+                process.exit(1);
+              }
+              const helm = JSON.parse(stripComments(fs.readFileSync('/config/openclaw.json', 'utf8')));
+              const deepMerge = (target, source) => {
+                for (const key of Object.keys(source)) {
+                  if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+                    target[key] = target[key] || {};
+                    deepMerge(target[key], source[key]);
+                  } else {
+                    target[key] = source[key];
+                  }
+                }
+                return target;
+              };
+              const merged = deepMerge(existing, helm);
+              fs.writeFileSync('/home/node/.openclaw/openclaw.json', JSON.stringify(merged, null, 2));
+            "; then
+              log "Config merged successfully"
+            else
+              log "WARNING: Merge failed (existing config may not be valid JSON), falling back to overwrite"
+              cp /config/openclaw.json /home/node/.openclaw/openclaw.json
+            fi
+          else
+            if [ ! -f /home/node/.openclaw/openclaw.json ]; then
+              log "Fresh install - writing initial config"
+            else
+              log "Mode: overwrite - replacing config with Helm values"
+            fi
+            cp /config/openclaw.json /home/node/.openclaw/openclaw.json
+          fi
+          log "Config initialization complete"
+
+        init-skills.sh: |
+          log() { echo "[$(date -Iseconds)] [init-skills] $*"; }
+
+          log "Starting skills initialization"
+
+          # ============================================================
+          # Runtime Dependencies
+          # ============================================================
+          # Some skills require additional runtimes (Python, Go, etc.)
+          # Install them here so they persist across pod restarts.
+          #
+          # Example: Install uv (Python package manager) for Python skills
+          # mkdir -p /home/node/.openclaw/bin
+          # if [ ! -f /home/node/.openclaw/bin/uv ]; then
+          #   log "Installing uv..."
+          #   curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/home/node/.openclaw/bin sh
+          # fi
+          #
+          # Example: Install pnpm and packages for interfaces (e.g., MS Teams)
+          # The read-only filesystem and non-root UID prevent writing to default
+          # pnpm paths (/usr/local/lib/node_modules, ~/.local/share/pnpm, etc.).
+          # Redirect PNPM_HOME to the PVC so the binary persists across restarts.
+          # The init container's HOME=/tmp ensures pnpm's cache, state, and config
+          # writes land on /tmp (writable emptyDir). The store goes on the PVC so
+          # hardlinks work (same filesystem as node_modules) and persist.
+          # PNPM_HOME=/home/node/.openclaw/pnpm
+          # mkdir -p "$PNPM_HOME"
+          # if [ ! -f "$PNPM_HOME/pnpm" ]; then
+          #   log "Installing pnpm..."
+          #   curl -fsSL https://get.pnpm.io/install.sh | env PNPM_HOME="$PNPM_HOME" SHELL=/bin/sh sh -
+          # fi
+          # export PATH="$PNPM_HOME:$PATH"
+          # log "Installing interface dependencies..."
+          # cd /home/node/.openclaw
+          # pnpm install <your-package> --store-dir /home/node/.openclaw/.pnpm-store
+
+          # ============================================================
+          # Skill Installation
+          # ============================================================
+          # Installs skills listed in SKILLS_TO_INSTALL (set via the top-level skills: [] value).
+          # Set skills: [] in your values to skip skill installation entirely.
+          mkdir -p /home/node/.openclaw/workspace/skills
+          cd /home/node/.openclaw/workspace
+          install_skill() {
+            skill="$1"
+            SKILL_NAME="$(basename "$skill")"
+            if [ -z "$skill" ]; then
+              return 0
+            fi
+            if [ -d "skills/$SKILL_NAME" ]; then
+              log "Skill already installed: $skill"
+              return 0
+            fi
+            log "Installing skill: $skill"
+            attempts=6
+            delay=5
+            for i in $(seq 1 "$attempts"); do
+              if npx -y clawhub install "$skill" --no-input; then
+                log "Installed skill: $skill"
+                return 0
+              fi
+              # Add a little jitter so concurrent pods don't retry in lockstep.
+              jitter=$((RANDOM % 5))
+              if [ "$i" -lt "$attempts" ]; then
+                log "WARNING: Failed to install skill: $skill (attempt $i/$attempts). Retrying in $((delay + jitter))s..."
+                sleep $((delay + jitter))
+                delay=$((delay * 2))
+              fi
+            done
+            log "WARNING: Failed to install skill after $attempts attempts: $skill"
+            return 1
+          }
+          for skill in $SKILLS_TO_INSTALL; do
+            install_skill "$skill" || true
+          done
+          log "Skills initialization complete"
+
     config:
       # @schema type:boolean;default:true
       enabled: true
@@ -572,6 +582,20 @@ app-template:
       #           port: http
 
   persistence:
+    # Init scripts ConfigMap mounted into both init containers
+    scripts:
+      enabled: true
+      type: configMap
+      identifier: scripts
+      advancedMounts:
+        main:
+          init-config:
+            - path: /scripts
+              readOnly: true
+          init-skills:
+            - path: /scripts
+              readOnly: true
+
     # ConfigMap for init container to copy from
     config:
       # @schema type:boolean;default:true
