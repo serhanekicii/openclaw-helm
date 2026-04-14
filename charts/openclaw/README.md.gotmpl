@@ -306,6 +306,33 @@ app-template:
               done
 ```
 
+### Homebrew
+
+The `init-homebrew` init container installs [Homebrew](https://brew.sh) into the data PVC and can also install the listed packages. It is disabled by default and runs before `init-skills` so tools installed with homebrew are available to skills.
+
+```yaml
+app-template:
+  homebrew:
+    enabled: true
+    packages:
+      - gh
+      - gogcli
+```
+
+After enabling, expose the Homebrew bin dirs to the main container:
+
+```yaml
+app-template:
+  controllers:
+    main:
+      containers:
+        main:
+          env:
+            PATH: /home/node/.{{ .Name }}/homebrew/bin:/home/node/.{{ .Name }}/homebrew/sbin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+```
+
+The installation is idempotent: subsequent pod restarts skip steps that are already complete (Homebrew clone and already-installed packages). Beware that Homebrew and its packages are not updated automatically. Also note that openclaw can use it to install packages at runtime, if you do not want this keep the Homebrew container disabled.
+
 ### Runtime Dependencies
 
 Some features (interfaces, skills) require additional runtimes or packages not included in the base image. The `init-skills` init container handles this -- install extra tooling to the PVC at `/home/node/.{{ .Name }}` so it persists across pod restarts and is available at runtime.

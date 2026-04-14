@@ -46,6 +46,9 @@
                                         "init-config.sh": {
                                             "type": "string"
                                         },
+                                        "init-homebrew.sh": {
+                                            "type": "string"
+                                        },
                                         "init-skills.sh": {
                                             "type": "string"
                                         }
@@ -622,6 +625,75 @@
                                                 }
                                             }
                                         },
+                                        "init-homebrew": {
+                                            "type": "object",
+                                            "properties": {
+                                                "command": {
+                                                    "description": "Init-homebrew startup script",
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "env": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "HOME": {
+                                                            "type": "string"
+                                                        },
+                                                        "HOMEBREW_ENABLED": {
+                                                            "type": "string"
+                                                        },
+                                                        "HOMEBREW_PACKAGES": {
+                                                            "type": "string"
+                                                        }
+                                                    }
+                                                },
+                                                "image": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "repository": {
+                                                            "default": "ghcr.io/openclaw/openclaw",
+                                                            "type": "string"
+                                                        },
+                                                        "tag": {
+                                                            "type": "string"
+                                                        }
+                                                    }
+                                                },
+                                                "securityContext": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "allowPrivilegeEscalation": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "capabilities": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "drop": {
+                                                                    "type": "array",
+                                                                    "items": {
+                                                                        "type": "string"
+                                                                    }
+                                                                }
+                                                            }
+                                                        },
+                                                        "readOnlyRootFilesystem": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "runAsGroup": {
+                                                            "type": "integer"
+                                                        },
+                                                        "runAsNonRoot": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "runAsUser": {
+                                                            "type": "integer"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        },
                                         "init-skills": {
                                             "type": "object",
                                             "properties": {
@@ -735,6 +807,21 @@
                             }
                         }
                     }
+                },
+                "homebrew": {
+                    "type": "object",
+                    "properties": {
+                        "enabled": {
+                            "description": "Enable the Homebrew init container",
+                            "default": false,
+                            "type": "boolean"
+                        },
+                        "packages": {
+                            "description": "Homebrew packages to install (e.g. `[gh, gogcli]`)",
+                            "type": "array"
+                        }
+                    },
+                    "additionalProperties": false
                 },
                 "ingress": {
                     "type": "object",
@@ -1013,6 +1100,17 @@
                                                         }
                                                     }
                                                 },
+                                                "init-homebrew": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "path": {
+                                                                "type": "string"
+                                                            }
+                                                        }
+                                                    }
+                                                },
                                                 "init-skills": {
                                                     "type": "array",
                                                     "items": {
@@ -1077,6 +1175,20 @@
                                                         }
                                                     }
                                                 },
+                                                "init-homebrew": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "path": {
+                                                                "type": "string"
+                                                            },
+                                                            "readOnly": {
+                                                                "type": "boolean"
+                                                            }
+                                                        }
+                                                    }
+                                                },
                                                 "init-skills": {
                                                     "type": "array",
                                                     "items": {
@@ -1127,6 +1239,17 @@
                                                     }
                                                 },
                                                 "init-config": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "path": {
+                                                                "type": "string"
+                                                            }
+                                                        }
+                                                    }
+                                                },
+                                                "init-homebrew": {
                                                     "type": "array",
                                                     "items": {
                                                         "type": "object",

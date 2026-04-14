@@ -150,6 +150,7 @@ All values are nested under `app-template:`. See [values.yaml](values.yaml) for 
 | app-template.configMaps.config.data.bash_aliases | string | `"alias openclaw='node /app/dist/index.js'\n"` |  |
 | app-template.configMaps.config.enabled | bool | `true` |  |
 | app-template.configMaps.scripts.data."init-config.sh" | string | `"log() { echo \"[$(date -Iseconds)] [init-config] $*\"; }\n\nlog \"Starting config initialization\"\nmkdir -p /home/node/.openclaw\nCONFIG_MODE=\"${CONFIG_MODE:-merge}\"\n\nif [ \"$CONFIG_MODE\" = \"merge\" ] && [ -f /home/node/.openclaw/openclaw.json ]; then\n  log \"Mode: merge - merging Helm config with existing config\"\n  if node -e \"\n    const fs = require('fs');\n    // Strip JSON5 single-line comments while preserving // inside strings (e.g. URLs)\n    const stripComments = (s) => {\n      let r = '', q = false, i = 0;\n      while (i < s.length) {\n        if (q) {\n          if (s[i] === '\\\\\\\\') { r += s[i] + s[i+1]; i += 2; continue; }\n          if (s[i] === '\\\"') q = false;\n          r += s[i++];\n        } else if (s[i] === '\\\"') {\n          q = true; r += s[i++];\n        } else if (s[i] === '/' && s[i+1] === '/') {\n          while (i < s.length && s[i] !== '\\n') i++;\n        } else { r += s[i++]; }\n      }\n      return r;\n    };\n    let existing;\n    try {\n      existing = JSON.parse(stripComments(fs.readFileSync('/home/node/.openclaw/openclaw.json', 'utf8')));\n    } catch (e) {\n      console.error('[init-config] Warning: existing config is not valid JSON, will overwrite');\n      process.exit(1);\n    }\n    const helm = JSON.parse(stripComments(fs.readFileSync('/config/openclaw.json', 'utf8')));\n    const deepMerge = (target, source) => {\n      for (const key of Object.keys(source)) {\n        if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {\n          target[key] = target[key] || {};\n          deepMerge(target[key], source[key]);\n        } else {\n          target[key] = source[key];\n        }\n      }\n      return target;\n    };\n    const merged = deepMerge(existing, helm);\n    fs.writeFileSync('/home/node/.openclaw/openclaw.json', JSON.stringify(merged, null, 2));\n  \"; then\n    log \"Config merged successfully\"\n  else\n    log \"WARNING: Merge failed (existing config may not be valid JSON), falling back to overwrite\"\n    cp /config/openclaw.json /home/node/.openclaw/openclaw.json\n  fi\nelse\n  if [ ! -f /home/node/.openclaw/openclaw.json ]; then\n    log \"Fresh install - writing initial config\"\n  else\n    log \"Mode: overwrite - replacing config with Helm values\"\n  fi\n  cp /config/openclaw.json /home/node/.openclaw/openclaw.json\nfi\nlog \"Config initialization complete\"\n"` |  |
+| app-template.configMaps.scripts.data."init-homebrew.sh" | string | `"log() { echo \"[$(date -Iseconds)] [init-homebrew] $*\"; }\n\nif [ \"${HOMEBREW_ENABLED:-false}\" != \"true\" ]; then\n  log \"Homebrew disabled, skipping\"\n  exit 0\nfi\n\nlog \"Starting Homebrew initialization\"\n\nHOMEBREW_PREFIX=/home/node/.openclaw/homebrew\nexport HOMEBREW_NO_AUTO_UPDATE=1\nexport HOMEBREW_NO_ANALYTICS=1\nexport HOMEBREW_NO_ENV_HINTS=1\n\nif [ ! -d \"$HOMEBREW_PREFIX\" ]; then\n  log \"Installing Homebrew...\"\n  git clone --depth=1 https://github.com/Homebrew/brew \"$HOMEBREW_PREFIX\"\nelse\n  log \"Homebrew already installed, skipping clone\"\nfi\n\nexport PATH=\"$HOMEBREW_PREFIX/bin:$HOMEBREW_PREFIX/sbin:$PATH\"\n\nif [ -n \"${HOMEBREW_PACKAGES:-}\" ]; then\n  log \"Installing packages: $HOMEBREW_PACKAGES\"\n  # shellcheck disable=SC2086\n  brew install $HOMEBREW_PACKAGES\nelse\n  log \"No packages to install\"\nfi\n\nlog \"Homebrew initialization complete\"\n"` |  |
 | app-template.configMaps.scripts.data."init-skills.sh" | string | `"log() { echo \"[$(date -Iseconds)] [init-skills] $*\"; }\n\nlog \"Starting skills initialization\"\n\n# ============================================================\n# Runtime Dependencies\n# ============================================================\n# Some skills require additional runtimes (Python, Go, etc.)\n# Install them here so they persist across pod restarts.\n#\n# Example: Install uv (Python package manager) for Python skills\n# mkdir -p /home/node/.openclaw/bin\n# if [ ! -f /home/node/.openclaw/bin/uv ]; then\n#   log \"Installing uv...\"\n#   curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/home/node/.openclaw/bin sh\n# fi\n#\n# Example: Install pnpm and packages for interfaces (e.g., MS Teams)\n# The read-only filesystem and non-root UID prevent writing to default\n# pnpm paths (/usr/local/lib/node_modules, ~/.local/share/pnpm, etc.).\n# Redirect PNPM_HOME to the PVC so the binary persists across restarts.\n# The init container's HOME=/tmp ensures pnpm's cache, state, and config\n# writes land on /tmp (writable emptyDir). The store goes on the PVC so\n# hardlinks work (same filesystem as node_modules) and persist.\n# PNPM_HOME=/home/node/.openclaw/pnpm\n# mkdir -p \"$PNPM_HOME\"\n# if [ ! -f \"$PNPM_HOME/pnpm\" ]; then\n#   log \"Installing pnpm...\"\n#   curl -fsSL https://get.pnpm.io/install.sh | env PNPM_HOME=\"$PNPM_HOME\" SHELL=/bin/sh sh -\n# fi\n# export PATH=\"$PNPM_HOME:$PATH\"\n# log \"Installing interface dependencies...\"\n# cd /home/node/.openclaw\n# pnpm install <your-package> --store-dir /home/node/.openclaw/.pnpm-store\n\n# ============================================================\n# Skill Installation\n# ============================================================\n# Installs skills listed in SKILLS_TO_INSTALL (set via the top-level skills: [] value).\n# Set skills: [] in your values to skip skill installation entirely.\nmkdir -p /home/node/.openclaw/workspace/skills\ncd /home/node/.openclaw/workspace\ninstall_skill() {\n  skill=\"$1\"\n  SKILL_NAME=\"$(basename \"$skill\")\"\n  if [ -z \"$skill\" ]; then\n    return 0\n  fi\n  if [ -d \"skills/$SKILL_NAME\" ]; then\n    log \"Skill already installed: $skill\"\n    return 0\n  fi\n  log \"Installing skill: $skill\"\n  attempts=6\n  delay=5\n  for i in $(seq 1 \"$attempts\"); do\n    if npx -y clawhub install \"$skill\" --no-input; then\n      log \"Installed skill: $skill\"\n      return 0\n    fi\n    # Add a little jitter so concurrent pods don't retry in lockstep.\n    jitter=$((RANDOM % 5))\n    if [ \"$i\" -lt \"$attempts\" ]; then\n      log \"WARNING: Failed to install skill: $skill (attempt $i/$attempts). Retrying in $((delay + jitter))s...\"\n      sleep $((delay + jitter))\n      delay=$((delay * 2))\n    fi\n  done\n  log \"WARNING: Failed to install skill after $attempts attempts: $skill\"\n  return 1\n}\nfor skill in $SKILLS_TO_INSTALL; do\n  install_skill \"$skill\" || true\ndone\nlog \"Skills initialization complete\"\n"` |  |
 | app-template.configMaps.scripts.enabled | bool | `true` |  |
 | app-template.configMode | string | `"merge"` | Config mode: `merge` preserves runtime changes, `overwrite` for strict GitOps |
@@ -172,6 +173,18 @@ All values are nested under `app-template:`. See [values.yaml](values.yaml) for 
 | app-template.controllers.main.initContainers.init-config.securityContext.runAsGroup | int | `1000` |  |
 | app-template.controllers.main.initContainers.init-config.securityContext.runAsNonRoot | bool | `true` |  |
 | app-template.controllers.main.initContainers.init-config.securityContext.runAsUser | int | `1000` |  |
+| app-template.controllers.main.initContainers.init-homebrew.command | list | `["sh","/scripts/init-homebrew.sh"]` | Init-homebrew startup script |
+| app-template.controllers.main.initContainers.init-homebrew.env.HOME | string | `"/tmp"` |  |
+| app-template.controllers.main.initContainers.init-homebrew.env.HOMEBREW_ENABLED | string | `"{{ .Values.homebrew.enabled }}"` |  |
+| app-template.controllers.main.initContainers.init-homebrew.env.HOMEBREW_PACKAGES | string | `"{{ .Values.homebrew.packages | join \" \" }}"` |  |
+| app-template.controllers.main.initContainers.init-homebrew.image.repository | string | `"ghcr.io/openclaw/openclaw"` |  |
+| app-template.controllers.main.initContainers.init-homebrew.image.tag | string | `"{{ .Values.openclawVersion }}"` |  |
+| app-template.controllers.main.initContainers.init-homebrew.securityContext.allowPrivilegeEscalation | bool | `false` |  |
+| app-template.controllers.main.initContainers.init-homebrew.securityContext.capabilities.drop[0] | string | `"ALL"` |  |
+| app-template.controllers.main.initContainers.init-homebrew.securityContext.readOnlyRootFilesystem | bool | `true` |  |
+| app-template.controllers.main.initContainers.init-homebrew.securityContext.runAsGroup | int | `1000` |  |
+| app-template.controllers.main.initContainers.init-homebrew.securityContext.runAsNonRoot | bool | `true` |  |
+| app-template.controllers.main.initContainers.init-homebrew.securityContext.runAsUser | int | `1000` |  |
 | app-template.controllers.main.initContainers.init-skills.command | list | `["sh","/scripts/init-skills.sh"]` | Init-skills startup script |
 | app-template.controllers.main.initContainers.init-skills.env.HOME | string | `"/tmp"` |  |
 | app-template.controllers.main.initContainers.init-skills.env.NPM_CONFIG_CACHE | string | `"/tmp/.npm"` |  |
@@ -187,6 +200,8 @@ All values are nested under `app-template:`. See [values.yaml](values.yaml) for 
 | app-template.controllers.main.replicas | int | `1` | Number of replicas (must be 1, OpenClaw doesn't support horizontal scaling) |
 | app-template.controllers.main.strategy | string | `"Recreate"` | Deployment strategy |
 | app-template.defaultPodOptions.securityContext | object | `{"fsGroup":1000,"fsGroupChangePolicy":"OnRootMismatch"}` | Pod security context |
+| app-template.homebrew.enabled | bool | `false` | Enable the Homebrew init container |
+| app-template.homebrew.packages | list | `[]` | Homebrew packages to install (e.g. `[gh, gogcli]`) |
 | app-template.ingress.main.enabled | bool | `false` | Enable ingress resource creation |
 | app-template.networkpolicies.main.controller | string | `"main"` |  |
 | app-template.networkpolicies.main.enabled | bool | `false` | Enable network policy (default deny-all with explicit allow rules) |
@@ -221,6 +236,7 @@ All values are nested under `app-template:`. See [values.yaml](values.yaml) for 
 | app-template.persistence.config.type | string | `"configMap"` |  |
 | app-template.persistence.data.accessMode | string | `"ReadWriteOnce"` | PVC access mode |
 | app-template.persistence.data.advancedMounts.main.init-config[0].path | string | `"/home/node/.openclaw"` |  |
+| app-template.persistence.data.advancedMounts.main.init-homebrew[0].path | string | `"/home/node/.openclaw"` |  |
 | app-template.persistence.data.advancedMounts.main.init-skills[0].path | string | `"/home/node/.openclaw"` |  |
 | app-template.persistence.data.advancedMounts.main.main[0].path | string | `"/home/node/.openclaw"` |  |
 | app-template.persistence.data.enabled | bool | `true` |  |
@@ -228,6 +244,8 @@ All values are nested under `app-template:`. See [values.yaml](values.yaml) for 
 | app-template.persistence.data.type | string | `"persistentVolumeClaim"` |  |
 | app-template.persistence.scripts.advancedMounts.main.init-config[0].path | string | `"/scripts"` |  |
 | app-template.persistence.scripts.advancedMounts.main.init-config[0].readOnly | bool | `true` |  |
+| app-template.persistence.scripts.advancedMounts.main.init-homebrew[0].path | string | `"/scripts"` |  |
+| app-template.persistence.scripts.advancedMounts.main.init-homebrew[0].readOnly | bool | `true` |  |
 | app-template.persistence.scripts.advancedMounts.main.init-skills[0].path | string | `"/scripts"` |  |
 | app-template.persistence.scripts.advancedMounts.main.init-skills[0].readOnly | bool | `true` |  |
 | app-template.persistence.scripts.enabled | bool | `true` |  |
@@ -235,6 +253,7 @@ All values are nested under `app-template:`. See [values.yaml](values.yaml) for 
 | app-template.persistence.scripts.type | string | `"configMap"` |  |
 | app-template.persistence.tmp.advancedMounts.main.chromium[0].path | string | `"/tmp"` |  |
 | app-template.persistence.tmp.advancedMounts.main.init-config[0].path | string | `"/tmp"` |  |
+| app-template.persistence.tmp.advancedMounts.main.init-homebrew[0].path | string | `"/tmp"` |  |
 | app-template.persistence.tmp.advancedMounts.main.init-skills[0].path | string | `"/tmp"` |  |
 | app-template.persistence.tmp.advancedMounts.main.main[0].path | string | `"/tmp"` |  |
 | app-template.persistence.tmp.enabled | bool | `true` |  |
@@ -405,6 +424,33 @@ app-template:
                 fi
               done
 ```
+
+### Homebrew
+
+The `init-homebrew` init container installs [Homebrew](https://brew.sh) into the data PVC and can also install the listed packages. It is disabled by default and runs before `init-skills` so tools installed with homebrew are available to skills.
+
+```yaml
+app-template:
+  homebrew:
+    enabled: true
+    packages:
+      - gh
+      - gogcli
+```
+
+After enabling, expose the Homebrew bin dirs to the main container:
+
+```yaml
+app-template:
+  controllers:
+    main:
+      containers:
+        main:
+          env:
+            PATH: /home/node/.openclaw/homebrew/bin:/home/node/.openclaw/homebrew/sbin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+```
+
+The installation is idempotent: subsequent pod restarts skip steps that are already complete (Homebrew clone and already-installed packages). Beware that Homebrew and its packages are not updated automatically. Also note that openclaw can use it to install packages at runtime, if you do not want this keep the Homebrew container disabled.
 
 ### Runtime Dependencies
 
