@@ -73,3 +73,12 @@ jobs:
       - name: Helm template validation
         run: |
           helm template test charts/openclaw --debug > /dev/null
+
+      - name: Set up yq
+        run: |
+          curl -fsSL https://github.com/mikefarah/yq/releases/download/v4.52.5/yq_linux_amd64 -o /usr/local/bin/yq
+          chmod +x /usr/local/bin/yq
+
+      - name: Snapshot tests
+        run: |
+          bash tests/test.sh
