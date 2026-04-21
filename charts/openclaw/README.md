@@ -134,6 +134,54 @@ kubectl delete pvc -n openclaw -l app.kubernetes.io/name=openclaw  # optional: r
 
 ---
 
+## Cost Guardrails
+
+OpenClaw sessions can accumulate unbounded LLM cost, especially with
+long-horizon agents (SWE, research, tool-heavy workflows). The default
+configuration in this chart uses `anthropic/claude-opus-4-6` and has no
+per-session budget — a single runaway session can burn hundreds of dollars
+of tokens before `session.reset.idleMinutes` fires.
+
+### Today's knobs (available now)
+
+The chart exposes these existing cost-related knobs:
+
+| Where | Key | Recommended starting value | Why |
+|---|---|---|---|
+| `openclaw.json` → `agents.defaults.timeoutSeconds` | integer | `300` (5 min) | Caps a single agent iteration; default is `600`. |
+| `openclaw.json` → `agents.defaults.maxConcurrent` | integer | `1` | Already the default — keep it at 1 unless you know why. |
+| `openclaw.json` → `session.reset.idleMinutes` | integer | `30` | Faster idle reclaim reduces context accumulation; default is `60`. |
+| `openclaw.json` → `agents.defaults.model.primary` | string | `anthropic/claude-haiku-4-5` for low-stakes workloads | Haiku is ~10× cheaper than Opus for comparable short-task quality. |
+| `openclaw.json` → `tools.web.search.enabled` | boolean | `false` unless needed | Web search triggers both tool-call and follow-up LLM cost. |
+
+See [`examples/values-cost-conscious.yaml`](examples/values-cost-conscious.yaml)
+for a starter overlay that applies all of the above.
+
+### Upcoming: per-session budgets
+
+[openclaw/openclaw#64463](https://github.com/openclaw/openclaw/issues/64463)
+tracks the addition of explicit per-session budgets to the OpenClaw runtime:
+
+- `session.maxTokensPerSession` — hard cap on cumulative input+output tokens
+- `session.maxDurationMinutes` — hard cap on wall-clock duration
+- `session.maxToolCallsPerSession` — hard cap on tool invocations
+- `session.onBudgetExceed` — `stop` | `warn` | `compact`
+
+Once that feature lands upstream and a chart-compatible OpenClaw version is
+released, this chart will gain a documented example and schema entries for
+those fields. For now, track the issue and plan your deployments to opt in.
+
+### External proxy approach
+
+If you need cost routing / fallback / metrics **today**, a common pattern is
+to run [LiteLLM Proxy](https://docs.litellm.ai/) as a **separate** Helm
+release in the same cluster and point OpenClaw at it by setting
+`ANTHROPIC_BASE_URL=http://litellm.<ns>.svc.cluster.local:4000` in your
+`openclaw-env-secret`. This is out of scope for this chart but is the
+simplest operational path until the in-runtime budgets ship.
+
+---
+
 ## Configuration
 
 All values are nested under `app-template:`. See [values.yaml](values.yaml) for full reference.

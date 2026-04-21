@@ -1,0 +1,110 @@
+# Cost-conscious starter overlay for the OpenClaw Helm chart.
+#
+# Usage:
+#   helm install openclaw openclaw/openclaw \
+#     -f charts/openclaw/examples/values-cost-conscious.yaml \
+#     -n openclaw
+#
+# This overlay applies the knobs documented in README.md → "Cost Guardrails":
+#
+#   - Uses Haiku as the default model (~10× cheaper than Opus for short tasks)
+#   - Caps a single agent iteration to 5 minutes
+#   - Reclaims idle sessions after 30 minutes
+#   - Disables web search by default (enable per-skill when needed)
+#
+# Suitable starting point for:
+#   - Self-hosted hobby / prosumer deployments
+#   - Small-team deployments where runaway cost risk > model quality sensitivity
+#   - Staging / evaluation environments before committing to a production model
+#
+# NOT a replacement for per-session token budgets (tracked in
+# openclaw/openclaw#64463). When that feature ships, this file will gain
+# `session.maxTokensPerSession` and related fields.
+
+app-template:
+  configMaps:
+    config:
+      data:
+        openclaw.json: |
+          {
+            "gateway": {
+              "port": 18789,
+              "mode": "local",
+              "trustedProxies": ["10.0.0.1"]
+            },
+
+            "browser": {
+              "enabled": true,
+              "defaultProfile": "default",
+              "profiles": {
+                "default": {
+                  "cdpUrl": "http://localhost:9222",
+                  "color": "#4285F4"
+                }
+              }
+            },
+
+            "agents": {
+              "defaults": {
+                "workspace": "/home/node/.openclaw/workspace",
+                "model": {
+                  // Haiku is ~10× cheaper than Opus for short-task quality.
+                  // Override per-agent below if a specific agent needs Opus.
+                  "primary": "anthropic/claude-haiku-4-5"
+                },
+                "userTimezone": "UTC",
+                // Caps a single agent iteration to 5 minutes.
+                // Default is 600 (10 min); long-horizon agents often hit this.
+                "timeoutSeconds": 300,
+                "maxConcurrent": 1
+              },
+              "list": [
+                {
+                  "id": "main",
+                  "default": true,
+                  "identity": {
+                    "name": "OpenClaw",
+                    "emoji": "🦞"
+                  }
+                }
+              ]
+            },
+
+            "session": {
+              "scope": "per-sender",
+              "store": "/home/node/.openclaw/sessions",
+              "reset": {
+                "mode": "idle",
+                // Faster idle reclaim reduces context accumulation.
+                // Default is 60.
+                "idleMinutes": 30
+              }
+
+              // TODO: Once openclaw/openclaw#64463 ships, uncomment:
+              // ,"maxTokensPerSession": 500000
+              // ,"maxDurationMinutes": 120
+              // ,"maxToolCallsPerSession": 30
+              // ,"onBudgetExceed": "stop"
+            },
+
+            "logging": {
+              "level": "info",
+              "consoleLevel": "info",
+              "consoleStyle": "compact",
+              "redactSensitive": "tools"
+            },
+
+            "tools": {
+              "profile": "full",
+              "web": {
+                "search": {
+                  // Web search triggers tool-call + follow-up LLM cost.
+                  // Enable only if your workflow requires it.
+                  "enabled": false
+                },
+                "fetch": {
+                  "enabled": true
+                }
+              }
+            }
+          }
