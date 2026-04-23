@@ -11,7 +11,7 @@ app-template:
   openclawVersion: "2026.4.21"
   # @schema type:string
   # -- Chromium sidecar image version
-  chromiumVersion: "147.0.7727.102"
+  chromiumVersion: "147.0.7727.117"
   # @schema type:string;enum:[merge, overwrite];default:merge
   # -- Config mode: `merge` preserves runtime changes, `overwrite` for strict GitOps
   configMode: merge
