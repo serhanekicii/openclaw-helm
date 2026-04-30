@@ -5,6 +5,55 @@ entries:
       artifacthub.io/category: ai-machine-learning
       artifacthub.io/changes: |
         - kind: changed
+          description: "Bump OpenClaw to 2026.4.27"
+      artifacthub.io/images: |
+        - name: openclaw
+          image: ghcr.io/openclaw/openclaw:2026.4.27
+        - name: chromium
+          image: chromedp/headless-shell:148.0.7778.56
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: Documentation
+          url: https://serhanekici.com/openclaw-helm.html
+        - name: Source
+          url: https://github.com/serhanekicii/openclaw-helm
+      artifacthub.io/signKey: |
+        fingerprint: 663862EB60C50E04AD73F198CA0FB121610B01FF
+        url: https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x663862EB60C50E04AD73F198CA0FB121610B01FF
+    apiVersion: v2
+    appVersion: 2026.4.27
+    created: "2026-04-30T08:32:18.435937691Z"
+    dependencies:
+    - name: app-template
+      repository: https://bjw-s-labs.github.io/helm-charts/
+      version: 4.6.2
+    description: Helm chart for deploying OpenClaw on Kubernetes — an AI assistant
+      that connects to messaging platforms and executes tasks autonomously.
+    digest: 685d1b5d4de728c5d936834ebf451478bbbcb4b45009a5f48f60320c19b5d17f
+    home: https://github.com/openclaw/openclaw
+    icon: https://raw.githubusercontent.com/openclaw/openclaw/main/docs/assets/openclaw-logo-text.png
+    keywords:
+    - ai
+    - assistant
+    - chatbot
+    - automation
+    - kubernetes
+    kubeVersion: '>=1.26.0-0'
+    maintainers:
+    - name: Serhan Ekici
+      url: https://serhanekici.com
+    name: openclaw
+    sources:
+    - https://github.com/serhanekicii/openclaw-helm
+    - https://serhanekici.com/openclaw-helm.html
+    type: application
+    urls:
+    - https://github.com/serhanekicii/openclaw-helm/releases/download/openclaw-1.5.28/openclaw-1.5.28.tgz
+    version: 1.5.28
+  - annotations:
+      artifacthub.io/category: ai-machine-learning
+      artifacthub.io/changes: |
+        - kind: changed
           description: "Bump OpenClaw to 2026.4.26"
       artifacthub.io/images: |
         - name: openclaw
@@ -3155,4 +3204,4 @@ entries:
     urls:
     - https://github.com/serhanekicii/openclaw-helm/releases/download/openclaw-1.0.0/openclaw-1.0.0.tgz
     version: 1.0.0
-generated: "2026-04-28T08:37:05.319085903Z"
+generated: "2026-04-30T08:32:18.436197427Z"
