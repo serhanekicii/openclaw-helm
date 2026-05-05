@@ -306,6 +306,33 @@ app-template:
               done
 ```
 
+### Homebrew
+
+The `init-homebrew` init container installs [Homebrew](https://brew.sh) into the data PVC and can also install the listed packages. It is disabled by default and runs before `init-skills` so tools installed with homebrew are available to skills.
+
+```yaml
+app-template:
+  homebrew:
+    enabled: true
+    packages:
+      - gh
+      - gogcli
+```
+
+After enabling, expose the Homebrew bin dirs to the main container:
+
+```yaml
+app-template:
+  controllers:
+    main:
+      containers:
+        main:
+          env:
+            PATH: /home/node/.{{ .Name }}/homebrew/bin:/home/node/.{{ .Name }}/homebrew/sbin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+```
+
+The installation is idempotent: subsequent pod restarts skip steps that are already complete (Homebrew clone and already-installed packages). Beware that Homebrew and its packages are not updated automatically. Also note that openclaw can use it to install packages at runtime, if you do not want this keep the Homebrew container disabled.
+
 ### Runtime Dependencies
 
 Some features (interfaces, skills) require additional runtimes or packages not included in the base image. The `init-skills` init container handles this -- install extra tooling to the PVC at `/home/node/.{{ .Name }}` so it persists across pod restarts and is available at runtime.
@@ -525,6 +552,26 @@ helm lint charts/{{ .Name }}
 helm dependency update charts/{{ .Name }}
 helm template test charts/{{ .Name }} --debug
 ```
+
+### Snapshot tests
+
+`tests/test.sh` renders the chart for a set of scenarios and diffs the output against committed snapshots in `tests/snapshots/`. The test fails if the rendered output differs from the snapshot, catching unintended breaking changes to the default output.
+
+Run the tests:
+
+```bash
+bash tests/test.sh
+```
+
+When a change to the chart output is intentional, update the snapshots and commit them:
+
+```bash
+bash tests/test.sh --update
+git add tests/snapshots
+git commit -m "chore: update helm snapshots"
+```
+
+Snapshot tests also run in CI as part of the `validate` job in the lint workflow.
 
 ---
 
