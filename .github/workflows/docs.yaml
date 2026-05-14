@@ -34,7 +34,7 @@ jobs:
           helm-docs --chart-search-root=charts
 
       - name: Generate values schema
-        uses: losisin/helm-values-schema-json-action@v2
+        uses: losisin/helm-values-schema-json-action@v3
         with:
           values: charts/openclaw/values.yaml
           output: charts/openclaw/values.schema.json
