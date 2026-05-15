@@ -1,0 +1,491 @@
+
+---
+# Source: openclaw/charts/app-template/templates/common.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: openclaw-config
+  labels:
+    app.kubernetes.io/instance: openclaw
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: openclaw
+    helm.sh/chart: app-template-4.6.2
+  namespace: default
+data:
+  bash_aliases: |
+    alias openclaw='node /app/dist/index.js'
+  openclaw.json: "{\n  // Gateway configuration\n  \"gateway\": {\n    \"port\": 18789,\n    \"mode\": \"local\",\n    // IMPORTANT: trustedProxies uses exact IP matching only\n    // - CIDR notation is NOT supported - list each proxy IP individually\n    // - IPv6 exact addresses may work but are untested\n    // - Recommend single-stack IPv4 deployments for simplicity\n    \"trustedProxies\": [\"10.0.0.1\"]\n  },\n\n  // Browser configuration (Chromium sidecar)\n  \"browser\": {\n    \"enabled\": true,\n    \"defaultProfile\": \"default\",\n    \"profiles\": {\n      \"default\": {\n        \"cdpUrl\": \"http://localhost:9222\",\n        \"color\": \"#4285F4\"\n      }\n    }\n  },\n\n  // Agent configuration\n  \"agents\": {\n    \"defaults\": {\n      \"workspace\": \"/home/node/.openclaw/workspace\",\n      \"model\": {\n        // Uses ANTHROPIC_API_KEY from environment\n        \"primary\": \"anthropic/claude-opus-4-6\"\n      },\n      \"userTimezone\": \"UTC\",\n      \"timeoutSeconds\": 600,\n      \"maxConcurrent\": 1\n    },\n    \"list\": [\n      {\n        \"id\": \"main\",\n        \"default\": true,\n        \"identity\": {\n          \"name\": \"OpenClaw\",\n          \"emoji\": \"\U0001F99E\"\n        }\n      }\n    ]\n  },\n\n  // Session management\n  \"session\": {\n    \"scope\": \"per-sender\",\n    \"store\": \"/home/node/.openclaw/sessions\",\n    \"reset\": {\n      \"mode\": \"idle\",\n      \"idleMinutes\": 60\n    }\n  },\n\n  // Logging\n  \"logging\": {\n    \"level\": \"info\",\n    \"consoleLevel\": \"info\",\n    \"consoleStyle\": \"compact\",\n    \"redactSensitive\": \"tools\"\n  },\n\n  // Tools configuration\n  \"tools\": {\n    \"profile\": \"full\",\n    \"web\": {\n      \"search\": {\n        \"enabled\": false\n      },\n      \"fetch\": {\n        \"enabled\": true\n      }\n    }\n  }\n\n  // Channel configuration can be added here:\n  // \"channels\": {\n  //   \"telegram\": {\n  //     \"botToken\": \"${TELEGRAM_BOT_TOKEN}\",\n  //     \"enabled\": true\n  //   },\n  //   \"discord\": {\n  //     \"token\": \"${DISCORD_BOT_TOKEN}\"\n  //   },\n  //   \"slack\": {\n  //     \"botToken\": \"${SLACK_BOT_TOKEN}\",\n  //     \"appToken\": \"${SLACK_APP_TOKEN}\"\n  //   }\n  // }\n}\n"
+# Source: openclaw/charts/app-template/templates/common.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: openclaw-scripts
+  labels:
+    app.kubernetes.io/instance: openclaw
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: openclaw
+    helm.sh/chart: app-template-4.6.2
+  namespace: default
+data:
+  init-config.sh: |
+    log() { echo "[$(date -Iseconds)] [init-config] $*"; }
+
+    log "Starting config initialization"
+    mkdir -p /home/node/.openclaw
+    CONFIG_MODE="${CONFIG_MODE:-merge}"
+
+    if [ "$CONFIG_MODE" = "merge" ] && [ -f /home/node/.openclaw/openclaw.json ]; then
+      log "Mode: merge - merging Helm config with existing config"
+      if node -e "
+        const fs = require('fs');
+        // Strip JSON5 single-line comments while preserving // inside strings (e.g. URLs)
+        const stripComments = (s) => {
+          let r = '', q = false, i = 0;
+          while (i < s.length) {
+            if (q) {
+              if (s[i] === '\\\\') { r += s[i] + s[i+1]; i += 2; continue; }
+              if (s[i] === '\"') q = false;
+              r += s[i++];
+            } else if (s[i] === '\"') {
+              q = true; r += s[i++];
+            } else if (s[i] === '/' && s[i+1] === '/') {
+              while (i < s.length && s[i] !== '\n') i++;
+            } else { r += s[i++]; }
+          }
+          return r;
+        };
+        let existing;
+        try {
+          existing = JSON.parse(stripComments(fs.readFileSync('/home/node/.openclaw/openclaw.json', 'utf8')));
+        } catch (e) {
+          console.error('[init-config] Warning: existing config is not valid JSON, will overwrite');
+          process.exit(1);
+        }
+        const helm = JSON.parse(stripComments(fs.readFileSync('/config/openclaw.json', 'utf8')));
+        const deepMerge = (target, source) => {
+          for (const key of Object.keys(source)) {
+            if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+              target[key] = target[key] || {};
+              deepMerge(target[key], source[key]);
+            } else {
+              target[key] = source[key];
+            }
+          }
+          return target;
+        };
+        const merged = deepMerge(existing, helm);
+        fs.writeFileSync('/home/node/.openclaw/openclaw.json', JSON.stringify(merged, null, 2));
+      "; then
+        log "Config merged successfully"
+      else
+        log "WARNING: Merge failed (existing config may not be valid JSON), falling back to overwrite"
+        cp /config/openclaw.json /home/node/.openclaw/openclaw.json
+      fi
+    else
+      if [ ! -f /home/node/.openclaw/openclaw.json ]; then
+        log "Fresh install - writing initial config"
+      else
+        log "Mode: overwrite - replacing config with Helm values"
+      fi
+      cp /config/openclaw.json /home/node/.openclaw/openclaw.json
+    fi
+    log "Config initialization complete"
+  init-homebrew.sh: |
+    log() { echo "[$(date -Iseconds)] [init-homebrew] $*"; }
+
+    if [ "${HOMEBREW_ENABLED:-false}" != "true" ]; then
+      log "Homebrew disabled, skipping"
+      exit 0
+    fi
+
+    log "Starting Homebrew initialization"
+
+    HOMEBREW_PREFIX=/home/node/.openclaw/homebrew
+    export HOMEBREW_NO_AUTO_UPDATE=1
+    export HOMEBREW_NO_ANALYTICS=1
+    export HOMEBREW_NO_ENV_HINTS=1
+
+    if [ ! -d "$HOMEBREW_PREFIX" ]; then
+      log "Installing Homebrew..."
+      git clone --depth=1 https://github.com/Homebrew/brew "$HOMEBREW_PREFIX"
+    else
+      log "Homebrew already installed, skipping clone"
+    fi
+
+    export PATH="$HOMEBREW_PREFIX/bin:$HOMEBREW_PREFIX/sbin:$PATH"
+
+    if [ -n "${HOMEBREW_PACKAGES:-}" ]; then
+      log "Installing packages: $HOMEBREW_PACKAGES"
+      # shellcheck disable=SC2086
+      brew install $HOMEBREW_PACKAGES
+    else
+      log "No packages to install"
+    fi
+
+    log "Homebrew initialization complete"
+  init-skills.sh: |
+    log() { echo "[$(date -Iseconds)] [init-skills] $*"; }
+
+    log "Starting skills initialization"
+
+    # ============================================================
+    # Runtime Dependencies
+    # ============================================================
+    # Some skills require additional runtimes (Python, Go, etc.)
+    # Install them here so they persist across pod restarts.
+    #
+    # Example: Install uv (Python package manager) for Python skills
+    # mkdir -p /home/node/.openclaw/bin
+    # if [ ! -f /home/node/.openclaw/bin/uv ]; then
+    #   log "Installing uv..."
+    #   curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/home/node/.openclaw/bin sh
+    # fi
+    #
+    # Example: Install pnpm and packages for interfaces (e.g., MS Teams)
+    # The read-only filesystem and non-root UID prevent writing to default
+    # pnpm paths (/usr/local/lib/node_modules, ~/.local/share/pnpm, etc.).
+    # Redirect PNPM_HOME to the PVC so the binary persists across restarts.
+    # The init container's HOME=/tmp ensures pnpm's cache, state, and config
+    # writes land on /tmp (writable emptyDir). The store goes on the PVC so
+    # hardlinks work (same filesystem as node_modules) and persist.
+    # PNPM_HOME=/home/node/.openclaw/pnpm
+    # mkdir -p "$PNPM_HOME"
+    # if [ ! -f "$PNPM_HOME/pnpm" ]; then
+    #   log "Installing pnpm..."
+    #   curl -fsSL https://get.pnpm.io/install.sh | env PNPM_HOME="$PNPM_HOME" SHELL=/bin/sh sh -
+    # fi
+    # export PATH="$PNPM_HOME:$PATH"
+    # log "Installing interface dependencies..."
+    # cd /home/node/.openclaw
+    # pnpm install <your-package> --store-dir /home/node/.openclaw/.pnpm-store
+
+    # ============================================================
+    # Skill Installation
+    # ============================================================
+    # Installs skills listed in SKILLS_TO_INSTALL (set via the top-level skills: [] value).
+    # Set skills: [] in your values to skip skill installation entirely.
+    mkdir -p /home/node/.openclaw/workspace/skills
+    cd /home/node/.openclaw/workspace
+    install_skill() {
+      skill="$1"
+      SKILL_NAME="$(basename "$skill")"
+      if [ -z "$skill" ]; then
+        return 0
+      fi
+      if [ -d "skills/$SKILL_NAME" ]; then
+        log "Skill already installed: $skill"
+        return 0
+      fi
+      log "Installing skill: $skill"
+      attempts=6
+      delay=5
+      for i in $(seq 1 "$attempts"); do
+        if npx -y clawhub install "$skill" --no-input; then
+          log "Installed skill: $skill"
+          return 0
+        fi
+        # Add a little jitter so concurrent pods don't retry in lockstep.
+        jitter=$((RANDOM % 5))
+        if [ "$i" -lt "$attempts" ]; then
+          log "WARNING: Failed to install skill: $skill (attempt $i/$attempts). Retrying in $((delay + jitter))s..."
+          sleep $((delay + jitter))
+          delay=$((delay * 2))
+        fi
+      done
+      log "WARNING: Failed to install skill after $attempts attempts: $skill"
+      return 1
+    }
+    for skill in $SKILLS_TO_INSTALL; do
+      install_skill "$skill" || true
+    done
+    log "Skills initialization complete"
+# Source: openclaw/charts/app-template/templates/common.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openclaw
+  labels:
+    app.kubernetes.io/controller: main
+    app.kubernetes.io/instance: openclaw
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: openclaw
+    helm.sh/chart: app-template-4.6.2
+  namespace: default
+spec:
+  revisionHistoryLimit: 3
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: main
+      app.kubernetes.io/name: openclaw
+      app.kubernetes.io/instance: openclaw
+  template:
+    metadata:
+      annotations:
+        checksum/configMaps: d16ed3f007089c9b430a7bb2625a0fdb11ebc19f5fb8851a1c837f21deaa47e9
+      labels:
+        app.kubernetes.io/controller: main
+        app.kubernetes.io/instance: openclaw
+        app.kubernetes.io/name: openclaw
+    spec:
+      enableServiceLinks: false
+      serviceAccountName: default
+      automountServiceAccountToken: true
+      securityContext:
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      dnsPolicy: ClusterFirst
+      initContainers:
+        - command:
+            - sh
+            - /scripts/init-config.sh
+          env:
+            - name: CONFIG_MODE
+              value: merge
+          image: ghcr.io/openclaw/openclaw:APP_VERSION
+          name: init-config
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsGroup: 1000
+            runAsNonRoot: true
+            runAsUser: 1000
+          volumeMounts:
+            - mountPath: /config
+              name: config
+              readOnly: true
+            - mountPath: /home/node/.openclaw
+              name: data
+            - mountPath: /scripts
+              name: scripts
+              readOnly: true
+            - mountPath: /tmp
+              name: tmp
+        - command:
+            - sh
+            - /scripts/init-homebrew.sh
+          env:
+            - name: HOME
+              value: /tmp
+            - name: HOMEBREW_ENABLED
+              value: "false"
+            - name: HOMEBREW_PACKAGES
+              value: ""
+          image: ghcr.io/openclaw/openclaw:APP_VERSION
+          name: init-homebrew
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsGroup: 1000
+            runAsNonRoot: true
+            runAsUser: 1000
+          volumeMounts:
+            - mountPath: /home/node/.openclaw
+              name: data
+            - mountPath: /scripts
+              name: scripts
+              readOnly: true
+            - mountPath: /tmp
+              name: tmp
+        - command:
+            - sh
+            - /scripts/init-skills.sh
+          env:
+            - name: HOME
+              value: /tmp
+            - name: NPM_CONFIG_CACHE
+              value: /tmp/.npm
+            - name: SKILLS_TO_INSTALL
+              value: weather gog
+          image: ghcr.io/openclaw/openclaw:APP_VERSION
+          name: init-skills
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsGroup: 1000
+            runAsNonRoot: true
+            runAsUser: 1000
+          volumeMounts:
+            - mountPath: /home/node/.openclaw
+              name: data
+            - mountPath: /scripts
+              name: scripts
+              readOnly: true
+            - mountPath: /tmp
+              name: tmp
+      containers:
+        - env:
+            - name: XDG_CACHE_HOME
+              value: /tmp
+          image: chromedp/headless-shell:147.0.7727.56
+          livenessProbe:
+            failureThreshold: 6
+            httpGet:
+              path: /json/version
+              port: 9222
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 5
+          name: chromium
+          readinessProbe:
+            httpGet:
+              path: /json/version
+              port: 9222
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+            requests:
+              cpu: 100m
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsGroup: 1000
+            runAsNonRoot: true
+            runAsUser: 1000
+          startupProbe:
+            failureThreshold: 12
+            httpGet:
+              path: /json/version
+              port: 9222
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 5
+          volumeMounts:
+            - mountPath: /tmp
+              name: tmp
+        - args:
+            - gateway
+            - --bind
+            - lan
+            - --port
+            - "18789"
+          command:
+            - node
+            - dist/index.js
+          image: ghcr.io/openclaw/openclaw:APP_VERSION
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            tcpSocket:
+              port: 18789
+            timeoutSeconds: 5
+          name: main
+          readinessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            tcpSocket:
+              port: 18789
+            timeoutSeconds: 5
+          resources:
+            limits:
+              cpu: 2000m
+              memory: 2Gi
+            requests:
+              cpu: 200m
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsGroup: 1000
+            runAsNonRoot: true
+            runAsUser: 1000
+          startupProbe:
+            failureThreshold: 30
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            tcpSocket:
+              port: 18789
+            timeoutSeconds: 5
+          volumeMounts:
+            - mountPath: /home/node/.bash_aliases
+              name: bash-aliases
+              readOnly: true
+              subPath: bash_aliases
+            - mountPath: /home/node/.openclaw
+              name: data
+            - mountPath: /tmp
+              name: tmp
+      volumes:
+        - configMap:
+            name: openclaw-config
+          name: bash-aliases
+        - configMap:
+            name: openclaw-config
+          name: config
+        - name: data
+          persistentVolumeClaim:
+            claimName: openclaw
+        - configMap:
+            name: openclaw-scripts
+          name: scripts
+        - emptyDir: {}
+          name: tmp
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: openclaw
+  labels:
+    app.kubernetes.io/instance: openclaw
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: openclaw
+    helm.sh/chart: app-template-4.6.2
+  namespace: default
+spec:
+  accessModes:
+    - "ReadWriteOnce"
+  resources:
+    requests:
+      storage: "5Gi"
+# Source: openclaw/charts/app-template/templates/common.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: openclaw
+  labels:
+    app.kubernetes.io/instance: openclaw
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: openclaw
+    app.kubernetes.io/service: openclaw
+    helm.sh/chart: app-template-4.6.2
+  namespace: default
+spec:
+  type: ClusterIP
+  ipFamilyPolicy: SingleStack
+  ipFamilies:
+    - IPv4
+  ports:
+    - port: 18789
+      targetPort: 18789
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/controller: main
+    app.kubernetes.io/instance: openclaw
+    app.kubernetes.io/name: openclaw

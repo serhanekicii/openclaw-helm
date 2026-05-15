@@ -21,6 +21,37 @@ app-template:
     - weather
     - gog
 
+  # ============================================================
+  # Homebrew
+  # ============================================================
+  # When enabled, an init container clones Homebrew into the data PVC
+  # (/home/node/.openclaw/homebrew) and installs the listed packages.
+  # The installation is idempotent: subsequent pod restarts skip steps
+  # that are already complete.
+  #
+  # After enabling, add the Homebrew bin dirs to the main container PATH so
+  # that installed tools are available at runtime:
+  #
+  #   app-template:
+  #     controllers:
+  #       main:
+  #         containers:
+  #           main:
+  #             env:
+  #               PATH: >-
+  #                 /home/node/.openclaw/homebrew/bin:
+  #                 /home/node/.openclaw/homebrew/sbin:
+  #                 /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+  #
+  # @schema additionalProperties:false
+  homebrew:
+    # @schema type:boolean;default:false
+    # -- Enable the Homebrew init container
+    enabled: false
+    # @schema type:array
+    # -- Homebrew packages to install (e.g. `[gh, gogcli]`)
+    packages: []
+
   defaultPodOptions:
     # -- Pod security context
     securityContext:
@@ -53,6 +84,34 @@ app-template:
             - /scripts/init-config.sh
           env:
             CONFIG_MODE: "{{ .Values.configMode | default \"merge\" }}"
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            runAsNonRoot: true
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+
+        # Install Homebrew and packages into the data PVC (idempotent, no-op when disabled).
+        # Runs before init-skills so that Homebrew-installed tools are available to skills.
+        init-homebrew:
+          image:
+            # @schema type:string;default:ghcr.io/openclaw/openclaw
+            repository: ghcr.io/openclaw/openclaw
+            # @schema type:string
+            tag: "{{ .Values.openclawVersion }}"
+          # -- Init-homebrew startup script
+          command:
+            - sh
+            - /scripts/init-homebrew.sh
+          env:
+            # @schema type:string
+            HOMEBREW_ENABLED: "{{ .Values.homebrew.enabled }}"
+            # @schema type:string
+            HOMEBREW_PACKAGES: '{{ .Values.homebrew.packages | join " " }}'
+            HOME: /tmp
           securityContext:
             runAsUser: 1000
             runAsGroup: 1000
@@ -121,7 +180,7 @@ app-template:
           env: {}
           # Example: Add runtime dependency paths for skills and extra runtimes
           # env:
-          #   PATH: /home/node/.openclaw/pnpm:/home/node/.openclaw/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+          #   PATH: /home/node/.openclaw/pnpm:/home/node/.openclaw/bin:/home/node/.openclaw/homebrew/bin:/home/node/.openclaw/homebrew/sbin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
           #   PNPM_HOME: /home/node/.openclaw/pnpm
           #   PNPM_STORE_DIR: /home/node/.openclaw/.pnpm-store
           #   # For internal CA trust (Python requests library)
@@ -358,6 +417,40 @@ app-template:
           fi
           log "Config initialization complete"
 
+        init-homebrew.sh: |
+          log() { echo "[$(date -Iseconds)] [init-homebrew] $*"; }
+
+          if [ "${HOMEBREW_ENABLED:-false}" != "true" ]; then
+            log "Homebrew disabled, skipping"
+            exit 0
+          fi
+
+          log "Starting Homebrew initialization"
+
+          HOMEBREW_PREFIX=/home/node/.openclaw/homebrew
+          export HOMEBREW_NO_AUTO_UPDATE=1
+          export HOMEBREW_NO_ANALYTICS=1
+          export HOMEBREW_NO_ENV_HINTS=1
+
+          if [ ! -d "$HOMEBREW_PREFIX" ]; then
+            log "Installing Homebrew..."
+            git clone --depth=1 https://github.com/Homebrew/brew "$HOMEBREW_PREFIX"
+          else
+            log "Homebrew already installed, skipping clone"
+          fi
+
+          export PATH="$HOMEBREW_PREFIX/bin:$HOMEBREW_PREFIX/sbin:$PATH"
+
+          if [ -n "${HOMEBREW_PACKAGES:-}" ]; then
+            log "Installing packages: $HOMEBREW_PACKAGES"
+            # shellcheck disable=SC2086
+            brew install $HOMEBREW_PACKAGES
+          else
+            log "No packages to install"
+          fi
+
+          log "Homebrew initialization complete"
+
         init-skills.sh: |
           log() { echo "[$(date -Iseconds)] [init-skills] $*"; }
 
@@ -592,6 +685,9 @@ app-template:
           init-config:
             - path: /scripts
               readOnly: true
+          init-homebrew:
+            - path: /scripts
+              readOnly: true
           init-skills:
             - path: /scripts
               readOnly: true
@@ -638,6 +734,8 @@ app-template:
         main:
           init-config:
             - path: /home/node/.openclaw
+          init-homebrew:
+            - path: /home/node/.openclaw
           init-skills:
             - path: /home/node/.openclaw
           main:
@@ -652,6 +750,8 @@ app-template:
       advancedMounts:
         main:
           init-config:
+            - path: /tmp
+          init-homebrew:
             - path: /tmp
           init-skills:
             - path: /tmp
